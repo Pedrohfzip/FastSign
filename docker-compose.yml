@@ -1,13 +1,27 @@
 version: '3.8'
 
 services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fastsign-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    networks:
+      - fastsign-network
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: fastsign-backend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - NODE_ENV=development
       - DB_HOST=db

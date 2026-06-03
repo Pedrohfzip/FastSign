@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 
-app.listen(3000, async ()  => {
+app.listen(3001, async ()  => {
     try{
         await sequelize.authenticate();
         console.log('Database connection has been established successfully.');
