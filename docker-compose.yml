@@ -22,7 +22,18 @@ services:
       - db
     networks:
       - fastsign-network
-
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fastsign-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - fastsign-network
   db:
     image: postgres:15-alpine
     container_name: fastsign-db
