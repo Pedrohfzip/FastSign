@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: fastsign-backend
     ports:
-      - "3001:3000"
+      - "3001:3001"
     environment:
       - NODE_ENV=development
       - DB_HOST=db

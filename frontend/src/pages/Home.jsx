@@ -1,8 +1,17 @@
 import React from 'react';
 import Header from '../components/Header';
 import DocumentCard from '../components/DocumentCard';
-
+import { uploadFile } from '../api/fileRoute';
 const Home = () => {
+    const inputRef = React.useRef(null);
+    const handleNewDocument = async () => {
+        // Lógica para criar um novo documento (exemplo: abrir modal, redirecionar, etc.)
+        // const result = await uploadFile(file);
+        // console.log(result);
+    };
+
+
+
     return (
         <div className="min-h-screen">
             <div className="container mx-auto px-6 py-6">
@@ -12,9 +21,15 @@ const Home = () => {
                     <div className="col-span-8">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-lg font-bold text-gray-900">Documentos recentes</h2>
-                            <button className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded flex items-center gap-2">
+                            {/* <button onClick={handleNewDocument} className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded flex items-center gap-2">
                                 + Novo documento
-                            </button>
+                            </button> */}
+                            <input
+                                type="file"
+                                accept=".pdf"
+                                ref={inputRef}
+                                onChange={handleNewDocument}
+                            />
                         </div>
 
                         {/* Cards de documento */}
