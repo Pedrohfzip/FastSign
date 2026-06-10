@@ -3,13 +3,12 @@ import { join, basename as _basename } from 'path';
 import { fileURLToPath } from 'url';
 import Sequelize from 'sequelize';
 import process from 'process';
-import config from '../config/config.json' assert { type: 'json' };
+import config from '../config/config.json' with { type: 'json' };
 
-// Recriando __filename e __dirname para ESM
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = _basename(__filename); // só o nome do arquivo atual
-
+const __dirname = fileURLToPath(new URL('.', import.meta.url)); // <-- corrigido
 const basename = _basename(__filename);
+
 const env = process.env.NODE_ENV || 'development';
 const envConfig = config[env];
 const db = {};
@@ -21,8 +20,7 @@ if (envConfig.use_env_variable) {
   sequelize = new Sequelize(envConfig.database, envConfig.username, envConfig.password, envConfig);
 }
 
-// import() é assíncrono, então precisamos de uma função async
-const files = readdirSync(new URL('.', import.meta.url).pathname)
+const files = readdirSync(__dirname) // <-- corrigido
   .filter(file =>
     file.indexOf('.') !== 0 &&
     file !== basename &&
@@ -31,7 +29,8 @@ const files = readdirSync(new URL('.', import.meta.url).pathname)
   );
 
 for (const file of files) {
-  const { default: modelDefiner } = await import(join(new URL('.', import.meta.url).pathname, file));
+  const fileUrl = new URL(file, import.meta.url).href; // <-- gera file:// correto
+  const { default: modelDefiner } = await import(fileUrl);
   const model = modelDefiner(sequelize, Sequelize.DataTypes);
   db[model.name] = model;
 }

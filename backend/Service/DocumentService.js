@@ -1,6 +1,5 @@
 import crypto from 'crypto';
-import sequelize from '../config/database.js';
-import { Document, DocumentVersion } from '../models/Document.js';
+import db from '../database/models/index.js';
 import { buildS3Key, uploadToS3, getPresignedUrl, deleteFromS3 } from './s3Service.js';
 
 const ALLOWED_MIME_TYPES = ['application/pdf'];
