@@ -1,13 +1,43 @@
 import React from 'react';
 import Header from '../components/Header';
 import DocumentCard from '../components/DocumentCard';
-import { uploadFile } from '../api/fileRoute';
+import { uploadDocument } from '../api/fileRoute';
+
+
 const Home = () => {
     const inputRef = React.useRef(null);
-    const handleNewDocument = async () => {
-        // Lógica para criar um novo documento (exemplo: abrir modal, redirecionar, etc.)
-        // const result = await uploadFile(file);
-        // console.log(result);
+    const [uploading, setUploading] = React.useState(false);
+    const [uploadProgress, setUploadProgress] = React.useState(0);
+    const [error, setError] = React.useState(null);
+
+    const handleNewDocument = async (data) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+
+        setError(null);
+        setUploading(true);
+        setUploadProgress(0);
+
+        try {
+            const result = await uploadDocument(file, (percent) => {
+                setUploadProgress(percent);
+            });
+
+            console.log('Documento criado:', result);
+            // TODO: atualizar lista de documentos (ex: refetch ou adicionar ao state)
+        } catch (err) {
+            const message =
+                err.response?.data?.error || err.message || 'Erro ao enviar documento.';
+            setError(message);
+            console.error('Upload falhou:', err);
+        } finally {
+            setUploading(false);
+            setUploadProgress(0);
+            // Limpa o input para permitir re-upload do mesmo arquivo
+            if (inputRef.current) inputRef.current.value = '';
+        }
+
     };
 
 
@@ -34,7 +64,7 @@ const Home = () => {
 
                         {/* Cards de documento */}
                         <div className="flex flex-col gap-3">
-                            <DocumentCard 
+                            <DocumentCard
                                 title="Contrato de Prestação de Serviços — TechCorp.pdf"
                                 status="EM ANDAMENTO"
                                 statusColor="orange"
