@@ -1,3 +1,4 @@
+import { handleUpload } from '../middlewares/uploadMiddleware.js';
 const DocController = {
     async upload(req, res) {
         try {
