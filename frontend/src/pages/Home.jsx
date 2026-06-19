@@ -24,7 +24,7 @@ const Home = () => {
                 setUploadProgress(percent);
             });
 
-            console.log('Documento criado:', result);
+            console.log('Documento criado:', file);
             // TODO: atualizar lista de documentos (ex: refetch ou adicionar ao state)
         } catch (err) {
             const message =

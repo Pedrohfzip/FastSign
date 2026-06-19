@@ -1,4 +1,4 @@
-import multer from 'multer';
+import  multer  from 'multer';
 
 const ALLOWED_MIME_TYPES = ['application/pdf'];
 const MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
@@ -32,6 +32,7 @@ export const uploadMiddleware = multer({
 export const handleUpload = (req, res) =>
     new Promise((resolve, reject) => {
         uploadMiddleware(req, res, (err) => {
+            console.log('Upload middleware result:', { err, file: req.file });
             if (err instanceof multer.MulterError) {
                 if (err.code === 'LIMIT_FILE_SIZE') {
                     return reject(

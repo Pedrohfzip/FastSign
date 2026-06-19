@@ -28,20 +28,10 @@ export default (sequelize, DataTypes) => {
                 defaultValue: 1,
                 field: 'version_number',
             },
-            s3Key: {
-                type: DataTypes.STRING(512),
+            filePath: {
+                type: DataTypes.STRING(1024),
                 allowNull: false,
-                field: 's3_key',
-            },
-            s3Bucket: {
-                type: DataTypes.STRING(255),
-                allowNull: false,
-                field: 's3_bucket',
-            },
-            s3Url: {
-                type: DataTypes.TEXT,
-                allowNull: true,
-                field: 's3_url',
+                field: 'file_path',
             },
             fileSize: {
                 type: DataTypes.BIGINT,

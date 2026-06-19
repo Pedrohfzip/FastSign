@@ -14,7 +14,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=fastsign
       - DB_USER=postgres
-      - DB_PASS=123
+      - DB_PASSWORD=123
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -38,7 +38,7 @@ services:
     image: postgres:15-alpine
     container_name: fastsign-db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       - POSTGRES_DB=fastsign
       - POSTGRES_USER=postgres

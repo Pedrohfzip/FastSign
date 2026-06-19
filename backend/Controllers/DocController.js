@@ -5,6 +5,7 @@ import {
 
 const DocController = {
     async upload(req, res) {
+        console.log('DocController.upload called');
         try {
             await handleUpload(req, res);
 
@@ -13,7 +14,7 @@ const DocController = {
             }
 
             // TODO: substituir por req.user.id quando auth estiver implementado
-            const userId = req.body.userId || 'temp-user-id';
+            const userId = req.body.userId || '8d2c6e1a-4b3f-4a9e-9c2d-1e7f5a6b9c0d';
 
             const { document, version } = await createDocument(req.file, userId);
 
