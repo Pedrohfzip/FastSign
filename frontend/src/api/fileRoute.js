@@ -18,3 +18,15 @@ export const uploadDocument = async (file, onProgress) => {
 };
 
 
+export const getDocuments = async () => {
+    const response = await api.get('/documents');
+    return response.data;
+};
+
+
+export const getDocument = async (documentId) => {
+    const response = await api.get(`/documents/${documentId}/file`);
+    return response.data;
+};
+
+

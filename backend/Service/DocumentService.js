@@ -48,8 +48,30 @@ export async function createDocument(file, userId) {
     } catch (err) {
         // se o arquivo já tinha sido escrito mas o banco falhou, limpa o disco
         if (savedFile) {
-            await storageService.deleteVersionFile(savedFile.filePath).catch(() => {});
+            await storageService.deleteVersionFile(savedFile.filePath).catch(() => { });
         }
         throw err;
     }
+}
+
+export async function getDocumentFile(documentId) {
+    const document = await Document.findByPk(documentId, {
+        include: [{ model: DocumentVersion, as: 'currentVersion' }],
+    });
+
+    if (!document || !document.currentVersion) {
+        const err = new Error('Documento não encontrado.');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    const buffer = await storageService.readVersionFile(document.currentVersion.filePath);
+
+    return { buffer, originalName: document.originalName };
+}
+
+export async function listDocuments() {
+    return Document.findAll({
+        order: [['createdAt', 'DESC']],
+    });
 }

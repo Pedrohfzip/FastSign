@@ -18,6 +18,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+      - ./backend/storage:/app/storage
     depends_on:
       - db
     networks:

@@ -1,22 +1,17 @@
 import React from 'react';
 
-const DocumentCard = ({ 
-    title,
-    status,
-    statusColor,
-    progress,
-    pages,
-    size,
-    expiryDate,
-    current,
-    total
+const DocumentCard = ({
+    title, status, statusColor, progress, pages, size, expiryDate, current, total,
+    onClick, selected
 }) => {
     return (
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div
+            onClick={onClick}
+            className={`bg-white border rounded-lg p-4 cursor-pointer transition-all ${selected ? 'border-black shadow-md' : 'border-gray-200 hover:border-gray-400'
+                }`}
+        >
             <div className="flex justify-between items-start mb-2">
-                <span className="text-sm font-medium text-gray-800">
-                    {title}
-                </span>
+                <span className="text-sm font-medium text-gray-800">{title}</span>
                 <span className={`text-xs font-semibold ${statusColor === 'orange' ? 'text-orange-600 bg-orange-50' : 'text-green-600 bg-green-50'} px-2 py-1 rounded`}>
                     {status}
                 </span>

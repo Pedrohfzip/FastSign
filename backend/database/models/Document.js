@@ -7,6 +7,10 @@ export default (sequelize, DataTypes) => {
                 foreignKey: 'documentId',
                 as: 'versions',
             });
+            Document.belongsTo(models.DocumentVersion, {
+                foreignKey: 'currentVersionId',
+                as: 'currentVersion',
+            });
         }
     }
 

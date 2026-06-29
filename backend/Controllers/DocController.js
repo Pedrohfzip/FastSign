@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { handleUpload } from '../middlewares/uploadMiddleware.js';
 import {
     createDocument,
+    getDocumentFile,
+    listDocuments,
 } from '../Service/DocumentService.js';
 
 const DocController = {
@@ -42,6 +44,31 @@ const DocController = {
             });
         }
     },
+
+    async getFile(req, res) {
+        console.log('DocController.getFile called with id:', req.params.id);
+        try {
+            const { buffer, originalName } = await getDocumentFile(req.params.id);
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="${originalName}"`);
+            res.send(buffer);
+        } catch (err) {
+            return res.status(err.statusCode || 500).json({
+                error: err.message || 'Erro ao carregar arquivo.',
+            });
+        }
+    },
+
+    async list(req, res) {
+        try {
+            const documents = await listDocuments();
+            return res.json(documents);
+        } catch (err) {
+            return res.status(500).json({ error: 'Erro ao buscar documentos.' });
+        }
+    },
+
 };
 
 export default DocController;
