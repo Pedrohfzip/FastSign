@@ -8,8 +8,12 @@ import './index.css'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <Header />
-      <AppRoutes />
+      <div style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Header />
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <AppRoutes />
+        </div>
+      </div>
     </BrowserRouter>
   </StrictMode>,
 )
