@@ -3,8 +3,9 @@
 // ignorando a restrição de largura do #root (width: 80%) definida no index.css.
 import React, { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, FileText, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, FileText, X, CheckCircle2, AlertCircle, PenLine } from "lucide-react";
 import { uploadDocument } from "../api/fileRoute";
+
 
 // Só PDF, igual ao input original (o backend/iframe só sabe exibir PDF)
 const ACCEPTED = [".pdf"];
@@ -84,12 +85,12 @@ export default function UploadScreen({ onContinue }) {
 
     return (
         <div
-            className="w-full h-screen overflow-hidden bg-[#0b0b12] text-white flex flex-col"
+            className="w-full h-screen overflow-hidden bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
             style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
         >
             {/* Ambient gradient */}
             <div
-                className="pointer-events-none fixed inset-0 z-0"
+                className=" scrollbar-hidden pointer-events-none fixed inset-0 z-0"
                 style={{
                     background:
                         "radial-gradient(ellipse 60% 50% at 50% -10%, rgba(91,106,240,0.18) 0%, transparent 70%)",
@@ -97,23 +98,14 @@ export default function UploadScreen({ onContinue }) {
             />
 
             {/* Main — ocupa o resto da tela e centraliza o card, sem gerar scroll na página */}
-            <main className="relative z-10 flex-1 min-h-0 overflow-hidden flex items-center justify-center px-6 py-6">
+            <main className="relative z-10 flex-1 min-h-0 overflow-hidden flex items-center justify-center px-6 py-6 scrollbar-hidden">
                 <motion.div
                     initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    className="w-full max-w-lg h-full max-h-[720px] flex flex-col gap-4"
+                    className="w-full max-w-lg max-h-[640px] flex flex-col gap-3 scrollbar-hidden"
                 >
-                    <div className="text-center mb-2 shrink-0">
-                        <h1 className="text-2xl font-semibold tracking-tight text-white" style={{ letterSpacing: "-0.03em" }}>
-                            Enviar documento
-                        </h1>
-                        <p className="text-sm text-gray-400 mt-1.5">
-                            Arraste ou selecione o arquivo para assinar digitalmente
-                        </p>
-                    </div>
-
-                    {/* Drop zone */}
+                    {/* Drop zone — mais compacta */}
                     <motion.div
                         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                         onDragLeave={() => setDragging(false)}
@@ -124,18 +116,18 @@ export default function UploadScreen({ onContinue }) {
                             backgroundColor: dragging ? "rgba(91,106,240,0.06)" : "rgba(255,255,255,0.02)",
                         }}
                         transition={{ duration: 0.2 }}
-                        className="relative cursor-pointer rounded-2xl border border-dashed flex flex-col items-center justify-center gap-3 py-10 px-8 select-none shrink-0"
+                        className="relative cursor-pointer rounded-2xl border border-dashed flex flex-col items-center justify-center gap-2 py-6 px-6 select-none shrink-0 scrollbar-hidden"
                     >
                         <motion.div
                             animate={{ scale: dragging ? 1.08 : 1 }}
                             transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                            className="w-14 h-14 rounded-xl flex items-center justify-center"
+                            className="w-11 h-11 rounded-xl flex items-center justify-center"
                             style={{
                                 background: dragging ? "rgba(91,106,240,0.2)" : "rgba(255,255,255,0.05)",
                                 border: "1px solid rgba(255,255,255,0.08)",
                             }}
                         >
-                            <Upload size={22} style={{ color: dragging ? "#5b6af0" : "#6b6b80" }} />
+                            <Upload size={18} style={{ color: dragging ? "#5b6af0" : "#6b6b80" }} />
                         </motion.div>
 
                         <div className="text-center">
@@ -178,7 +170,7 @@ export default function UploadScreen({ onContinue }) {
                     </motion.div>
 
                     {/* Lista de arquivos — scroll interno próprio, não empurra a página */}
-                    <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                    <div className="flex-1 min-h-0 overflow-y-auto  scrollbar-hidden">
                         <AnimatePresence>
                             {items.length > 0 && (
                                 <motion.ul
@@ -194,14 +186,14 @@ export default function UploadScreen({ onContinue }) {
                                             animate={{ opacity: 1, x: 0 }}
                                             exit={{ opacity: 0, x: 12 }}
                                             transition={{ duration: 0.22 }}
-                                            className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                                            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl"
                                             style={{
                                                 background: "rgba(255,255,255,0.03)",
                                                 border: "1px solid rgba(255,255,255,0.07)",
                                             }}
                                         >
                                             <div
-                                                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                                                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                                                 style={{
                                                     background:
                                                         item.status === STATUS.ERROR
@@ -212,11 +204,11 @@ export default function UploadScreen({ onContinue }) {
                                                 }}
                                             >
                                                 {item.status === STATUS.DONE ? (
-                                                    <CheckCircle2 size={14} style={{ color: "#4ade80" }} />
+                                                    <CheckCircle2 size={13} style={{ color: "#4ade80" }} />
                                                 ) : item.status === STATUS.ERROR ? (
-                                                    <AlertCircle size={14} style={{ color: "#f87171" }} />
+                                                    <AlertCircle size={13} style={{ color: "#f87171" }} />
                                                 ) : (
-                                                    <FileText size={14} style={{ color: "#5b6af0" }} />
+                                                    <FileText size={13} style={{ color: "#5b6af0" }} />
                                                 )}
                                             </div>
 
@@ -262,32 +254,50 @@ export default function UploadScreen({ onContinue }) {
                                 </motion.ul>
                             )}
                         </AnimatePresence>
+                        <AnimatePresence>
+                            {items.length > 0 && (
+                                <div className="flex justify-center mt-3 pb-3 scrollbar-hidden">
+                                    <motion.button
+                                        initial={{ opacity: 0, scale: 0.7 }}
+                                        animate={
+                                            canContinue
+                                                ? {
+                                                    opacity: 1,
+                                                    scale: 1,
+                                                    boxShadow: [
+                                                        "0 0 0 0 rgba(91,106,240,0.45)",
+                                                        "0 0 0 8px rgba(91,106,240,0)",
+                                                    ],
+                                                    scrollbarWidth: 0,
+                                                    scrollbarColor: "transparent transparent",
+                                                }
+                                                : { opacity: 1, scale: 1, boxShadow: "none" }
+                                        }
+                                        exit={{ opacity: 0, scale: 0.7 }}
+                                        transition={
+                                            canContinue
+                                                ? { boxShadow: { duration: 1.8, repeat: Infinity, ease: "easeOut" } }
+                                                : { duration: 0.25, ease: [0.22, 1, 0.36, 1] }
+                                        }
+                                        disabled={!canContinue}
+                                        onClick={() => onContinue?.(doneItems.map((it) => it.file))}
+                                        title={canContinue ? "Continuar para assinar" : "Aguardando envio..."}
+                                        className="w-11 h-11 rounded-full flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-opacity shrink-0"
+                                        style={{
+                                            background: "linear-gradient(360deg, #5b6af0 0%, #7c5cf6 100%)",
+                                        }}
+                                    >
+                                        <PenLine size={17} className="text-white" />
+                                    </motion.button>
+                                </div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
                     {/* CTA — só habilita quando todos os uploads terminaram com sucesso */}
-                    <AnimatePresence>
-                        {items.length > 0 && (
-                            <motion.button
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 4 }}
-                                transition={{ duration: 0.25 }}
-                                disabled={!canContinue}
-                                onClick={() => onContinue?.(doneItems.map((it) => it.file))}
-                                className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                                style={{
-                                    background: "linear-gradient(135deg, #5b6af0 0%, #7c5cf6 100%)",
-                                    boxShadow: canContinue ? "0 0 24px rgba(91,106,240,0.25)" : "none",
-                                }}
-                                whileHover={canContinue ? { scale: 1.015, boxShadow: "0 0 32px rgba(91,106,240,0.35)" } : {}}
-                                whileTap={canContinue ? { scale: 0.98 } : {}}
-                            >
-                                {hasUploading ? "Enviando..." : "Continuar para assinar →"}
-                            </motion.button>
-                        )}
-                    </AnimatePresence>
+
                 </motion.div>
             </main>
-        </div>
+        </div >
     );
 }
