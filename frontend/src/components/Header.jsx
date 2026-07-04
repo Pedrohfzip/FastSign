@@ -35,7 +35,7 @@ const Header = () => {
                 padding: '0 24px',
                 height: '52px',
                 borderBottom: '1px solid rgba(255,255,255,0.08)',
-                backgroundColor: 'rgba(11,11,18,0.85)',
+                backgroundColor: '#151522',
                 backdropFilter: 'blur(10px)',
                 WebkitBackdropFilter: 'blur(10px)',
             }}

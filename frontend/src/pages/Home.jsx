@@ -3,8 +3,9 @@
 // ignorando a restrição de largura do #root (width: 80%) definida no index.css.
 import React, { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, FileText, X, CheckCircle2, AlertCircle, PenLine } from "lucide-react";
+import { Upload, FileText, X, CheckCircle2, AlertCircle, PenLine, Loader2 } from "lucide-react";
 import { uploadDocument } from "../api/fileRoute";
+import { useNavigate } from 'react-router'
 
 
 // Só PDF, igual ao input original (o backend/iframe só sabe exibir PDF)
@@ -24,7 +25,10 @@ export default function UploadScreen({ onContinue }) {
     const [dragging, setDragging] = useState(false);
     // cada item: { id, file, status, progress, error }
     const [items, setItems] = useState([]);
+    const [submitting, setSubmitting] = useState(false); // novo
     const inputRef = useRef(null);
+    const navigate = useNavigate()
+
 
     const addFiles = useCallback((fileList) => {
         const incoming = Array.from(fileList)
@@ -34,11 +38,10 @@ export default function UploadScreen({ onContinue }) {
         if (incoming.length === 0) return;
 
         setItems((prev) => [...prev, ...incoming]);
-        incoming.forEach(uploadItem);
     }, []);
 
     const uploadItem = async (item) => {
-        setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: STATUS.UPLOADING } : it)));
+        setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: STATUS.UPLOADING, error: null } : it)));
 
         try {
             await uploadDocument(item.file, (percent) => {
@@ -47,11 +50,13 @@ export default function UploadScreen({ onContinue }) {
             setItems((prev) =>
                 prev.map((it) => (it.id === item.id ? { ...it, status: STATUS.DONE, progress: 100 } : it))
             );
+            return true;
         } catch (err) {
             const message = err.response?.data?.error || err.message || "Erro ao enviar documento.";
             setItems((prev) =>
                 prev.map((it) => (it.id === item.id ? { ...it, status: STATUS.ERROR, error: message } : it))
             );
+            return false;
         }
     };
 
@@ -79,13 +84,28 @@ export default function UploadScreen({ onContinue }) {
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
-    const hasUploading = items.some((it) => it.status === STATUS.UPLOADING);
-    const doneItems = items.filter((it) => it.status === STATUS.DONE);
-    const canContinue = items.length > 0 && !hasUploading && doneItems.length === items.length;
+    const handleSubmitAndContinue = async () => {
+        if (items.length === 0 || submitting) return;
+
+        setSubmitting(true);
+
+        // sobe só quem ainda não terminou (PENDING ou ERROR, permitindo retry automático)
+        const targets = items.filter((it) => it.status !== STATUS.DONE);
+        const results = await Promise.all(targets.map(uploadItem));
+
+        setSubmitting(false);
+
+        const allOk = results.every(Boolean);
+        if (allOk) {
+            navigate('/sign', { state: { files: items.map((it) => it.file) } });
+        }
+    };
+
+    const canSubmit = items.length > 0 && !submitting;
 
     return (
         <div
-            className="w-full h-screen overflow-hidden bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
+            className="w-full  overflow-hidden bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
             style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
         >
             {/* Ambient gradient */}
@@ -99,12 +119,7 @@ export default function UploadScreen({ onContinue }) {
 
             {/* Main — ocupa o resto da tela e centraliza o card, sem gerar scroll na página */}
             <main className="relative z-10 flex-1 min-h-0 overflow-hidden flex items-center justify-center px-6 py-6 scrollbar-hidden">
-                <motion.div
-                    initial={{ opacity: 0, y: 24 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    className="w-full max-w-lg max-h-[640px] flex flex-col gap-3 scrollbar-hidden"
-                >
+                <div className="w-full max-w-lg max-h-[640px] flex flex-col gap-3 scrollbar-hidden">
                     {/* Drop zone — mais compacta */}
                     <motion.div
                         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -260,7 +275,7 @@ export default function UploadScreen({ onContinue }) {
                                     <motion.button
                                         initial={{ opacity: 0, scale: 0.7 }}
                                         animate={
-                                            canContinue
+                                            canSubmit
                                                 ? {
                                                     opacity: 1,
                                                     scale: 1,
@@ -268,26 +283,26 @@ export default function UploadScreen({ onContinue }) {
                                                         "0 0 0 0 rgba(91,106,240,0.45)",
                                                         "0 0 0 8px rgba(91,106,240,0)",
                                                     ],
-                                                    scrollbarWidth: 0,
-                                                    scrollbarColor: "transparent transparent",
                                                 }
                                                 : { opacity: 1, scale: 1, boxShadow: "none" }
                                         }
                                         exit={{ opacity: 0, scale: 0.7 }}
                                         transition={
-                                            canContinue
+                                            canSubmit
                                                 ? { boxShadow: { duration: 1.8, repeat: Infinity, ease: "easeOut" } }
                                                 : { duration: 0.25, ease: [0.22, 1, 0.36, 1] }
                                         }
-                                        disabled={!canContinue}
-                                        onClick={() => onContinue?.(doneItems.map((it) => it.file))}
-                                        title={canContinue ? "Continuar para assinar" : "Aguardando envio..."}
+                                        disabled={!canSubmit}
+                                        onClick={handleSubmitAndContinue}
+                                        title={submitting ? "Enviando..." : canSubmit ? "Enviar e continuar" : "Adicione arquivos"}
                                         className="w-11 h-11 rounded-full flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-opacity shrink-0"
-                                        style={{
-                                            background: "linear-gradient(360deg, #5b6af0 0%, #7c5cf6 100%)",
-                                        }}
+                                        style={{ background: "linear-gradient(360deg, #5b6af0 0%, #7c5cf6 100%)" }}
                                     >
-                                        <PenLine size={17} className="text-white" />
+                                        {submitting ? (
+                                            <Loader2 size={17} className="text-white animate-spin" />
+                                        ) : (
+                                            <PenLine size={17} className="text-white" />
+                                        )}
                                     </motion.button>
                                 </div>
                             )}
@@ -296,7 +311,7 @@ export default function UploadScreen({ onContinue }) {
 
                     {/* CTA — só habilita quando todos os uploads terminaram com sucesso */}
 
-                </motion.div>
+                </div>
             </main>
         </div >
     );
