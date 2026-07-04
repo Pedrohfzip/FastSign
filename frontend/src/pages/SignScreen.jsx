@@ -32,7 +32,6 @@ export default function SignScreen() {
             className="w-full  overflow-hidden bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
             style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
         >
-            {/* Ambient gradient — igual à tela de upload */}
             <div
                 className="scrollbar-hidden pointer-events-none fixed inset-0 z-0"
                 style={{

@@ -1,8 +1,8 @@
 import { Routes, Route, useLocation, useNavigationType } from 'react-router'
 import { AnimatePresence, motion } from 'framer-motion'
-import Home from '../pages/Home'
+import UploadFile from '../pages/uploadFile'
 import SignScreen from '../pages/SignScreen'
-
+import Home from '../pages/Home'
 // direction:  1 = avançando (entra da direita, sai pra esquerda)
 //            -1 = voltando   (entra da esquerda, sai pra direita)
 const slideVariants = {
@@ -66,6 +66,7 @@ export default function AppRoutes() {
       <AnimatePresence initial={false} custom={direction}>
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<AnimatedPage direction={direction}><Home /></AnimatedPage>} />
+          <Route path="/upload" element={<AnimatedPage direction={direction}><UploadFile /></AnimatedPage>} />
           <Route path="/sign" element={<AnimatedPage direction={direction}><SignScreen /></AnimatedPage>} />
         </Routes>
       </AnimatePresence>
