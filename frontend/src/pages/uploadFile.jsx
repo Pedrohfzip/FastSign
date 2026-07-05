@@ -120,13 +120,6 @@ export default function UploadScreen({ onContinue }) {
             {/* Main — ocupa o resto da tela e centraliza o card, sem gerar scroll na página */}
             <main className="relative z-10 flex-1 min-h-0 overflow-hidden flex items-center justify-center px-6 py-6 scrollbar-hidden">
                 <div className="w-full max-w-lg max-h-[640px] flex flex-col gap-3 scrollbar-hidden">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors w-fit"
-                    >
-                        <ArrowLeft size={15} />
-                        Voltar
-                    </button>
                     {/* Drop zone — mais compacta */}
                     <motion.div
                         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
