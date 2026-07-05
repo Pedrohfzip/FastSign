@@ -60,6 +60,7 @@ export default function AppRoutes() {
           <Route path="/upload" element={<AnimatedPage direction={direction}><UploadFile /></AnimatedPage>} />
           <Route path="/sign" element={<AnimatedPage direction={direction}><SignScreen /></AnimatedPage>} />
           <Route path="/sign-up" element={<AnimatedPage direction={direction}><SignUp /></AnimatedPage>} />
+          <Route path="/login" element={<AnimatedPage direction={direction}><Login /></AnimatedPage>} />
         </Routes>
       </AnimatePresence>
     </div>
