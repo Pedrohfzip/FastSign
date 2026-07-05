@@ -3,6 +3,9 @@ import { AnimatePresence, motion } from 'framer-motion'
 import Home from '../pages/Home'
 import UploadFile from '../pages/UploadFile'  // antes era "Home"
 import SignScreen from '../pages/SignScreen'
+import SignUp from '../pages/SignUp'
+import Login from '../pages/Login'
+
 
 const slideVariants = {
   initial: (direction) => ({
@@ -56,6 +59,7 @@ export default function AppRoutes() {
           <Route path="/" element={<AnimatedPage direction={direction}><Home /></AnimatedPage>} />
           <Route path="/upload" element={<AnimatedPage direction={direction}><UploadFile /></AnimatedPage>} />
           <Route path="/sign" element={<AnimatedPage direction={direction}><SignScreen /></AnimatedPage>} />
+          <Route path="/sign-up" element={<AnimatedPage direction={direction}><SignUp /></AnimatedPage>} />
         </Routes>
       </AnimatePresence>
     </div>

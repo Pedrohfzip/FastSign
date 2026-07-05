@@ -1,11 +1,13 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import sequelize from './database/index.js';
 import router from './routes/index.js';
 const app = express();
 
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors({ origin: process.env.FRONTEND_URL }));
 app.use(express.json());
+app.use(cookieParser());
 
 
 app.use('/api', router);

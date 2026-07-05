@@ -17,7 +17,8 @@ export default function App() {
     const navigate = useNavigate();
 
     const handleNavigate = () => {
-        navigate("/upload");
+        // navigate("/upload");
+        navigate("/sign-up");
     };
     return (
         <div
