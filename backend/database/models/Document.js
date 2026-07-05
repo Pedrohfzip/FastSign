@@ -11,6 +11,10 @@ export default (sequelize, DataTypes) => {
                 foreignKey: 'currentVersionId',
                 as: 'currentVersion',
             });
+            Document.hasMany(models.Signatory, {
+                foreignKey: 'documentId',
+                as: 'signatories',
+            });
         }
     }
 
