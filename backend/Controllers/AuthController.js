@@ -12,6 +12,7 @@ const COOKIE_OPTIONS = {
 
 const AuthController = {
     async register(req, res) {
+        console.log('Received registration request:', req.body); // Log the incoming request body
         try {
             const { name, email, cpf, password } = req.body;
 

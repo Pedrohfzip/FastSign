@@ -1,7 +1,7 @@
 import { Routes, Route, useLocation, useNavigationType } from 'react-router'
 import { AnimatePresence, motion } from 'framer-motion'
-import Home from '../pages/Home'
-import UploadFile from '../pages/UploadFile'  // antes era "Home"
+import RootGate from '../components/RootGate'
+import UploadFile from '../pages/UploadFile'
 import SignScreen from '../pages/SignScreen'
 import SignUp from '../pages/SignUp'
 import Login from '../pages/Login'
@@ -56,7 +56,7 @@ export default function AppRoutes() {
     <div style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden', backgroundColor: '#0b0b12' }}>
       <AnimatePresence initial={false} custom={direction}>
         <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<AnimatedPage direction={direction}><Home /></AnimatedPage>} />
+          <Route path="/" element={<AnimatedPage direction={direction}><RootGate /></AnimatedPage>} />
           <Route path="/upload" element={<AnimatedPage direction={direction}><UploadFile /></AnimatedPage>} />
           <Route path="/sign" element={<AnimatedPage direction={direction}><SignScreen /></AnimatedPage>} />
           <Route path="/sign-up" element={<AnimatedPage direction={direction}><SignUp /></AnimatedPage>} />
