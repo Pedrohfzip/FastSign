@@ -1,19 +1,15 @@
 import { Routes, Route, useLocation, useNavigationType } from 'react-router'
 import { AnimatePresence, motion } from 'framer-motion'
-import UploadFile from '../pages/uploadFile'
-import SignScreen from '../pages/SignScreen'
 import Home from '../pages/Home'
-// direction:  1 = avançando (entra da direita, sai pra esquerda)
-//            -1 = voltando   (entra da esquerda, sai pra direita)
+import UploadFile from '../pages/UploadFile'  // antes era "Home"
+import SignScreen from '../pages/SignScreen'
+
 const slideVariants = {
   initial: (direction) => ({
     x: direction < 0 ? '-100%' : '100%',
     opacity: 0,
   }),
-  animate: {
-    x: 0,
-    opacity: 1,
-  },
+  animate: { x: 0, opacity: 1 },
   exit: (direction) => ({
     x: direction < 0 ? '100%' : '-100%',
     opacity: 0,
@@ -50,19 +46,11 @@ function AnimatedPage({ children, direction }) {
 
 export default function AppRoutes() {
   const location = useLocation()
-  const navigationType = useNavigationType() // 'PUSH' | 'POP' | 'REPLACE'
+  const navigationType = useNavigationType()
   const direction = navigationType === 'POP' ? -1 : 1
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: '100vh',
-        overflow: 'hidden',
-        backgroundColor: '#0b0b12',
-      }}
-    >
+    <div style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden', backgroundColor: '#0b0b12' }}>
       <AnimatePresence initial={false} custom={direction}>
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<AnimatedPage direction={direction}><Home /></AnimatedPage>} />

@@ -26,16 +26,16 @@ export default function App() {
         >
             {/* Ambient glow — posicionado relativo ao container, não à viewport */}
             <div
-                className="pointer-events-none absolute inset-0 z-0"
+                className=" scrollbar-hidden pointer-events-none fixed inset-0 z-0"
                 style={{
                     background:
-                        "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(91,106,240,0.2) 0%, transparent 65%)",
+                        "radial-gradient(ellipse 60% 50% at 50% -10%, rgba(91,106,240,0.18) 0%, transparent 70%)",
                 }}
             />
 
 
 
-            <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center  max-w-md w-full mx-auto px-6 gap-4">
+            <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center  max-w-md w-full mx-auto px-6 ">
 
                 {/* Floating document icon */}
                 <motion.div
@@ -50,7 +50,6 @@ export default function App() {
                         style={{
                             width: 160,
                             height: 160,
-                            background: "radial-gradient(circle, rgba(91,106,240,0.45) 0%, rgba(124,92,246,0.2) 60%, transparent 100%)",
                         }}
                     />
 
@@ -71,7 +70,7 @@ export default function App() {
                         className="absolute rounded-2xl flex flex-col"
                         style={{
                             width: 100,
-                            height: 138,
+                            height: 130,
                             background: "linear-gradient(160deg, rgba(30,30,50,0.95) 0%, rgba(18,18,32,0.98) 100%)",
                             border: "1px solid rgba(255,255,255,0.1)",
                             boxShadow: "0 24px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)",
@@ -172,13 +171,13 @@ export default function App() {
                     <h1
                         className="text-4xl font-semibold tracking-tight text-white leading-[1.15]"
                     >
-                        Assine documentos
+                        Assine documentos de
                         <br />
-                        <span style={{ color: ACCENT }}>sem pagar nada.</span>
+                        <span style={{ color: ACCENT }}>GRAÇA.</span>
                     </h1>
                     <p className="text-gray-400 text-base leading-relaxed">
                         Crie sua conta gratuitamente, envie seu PDF e assine com
-                        validade jurídica — em segundos, direto do navegador.
+                        validade jurídica
                     </p>
                 </motion.div>
 

@@ -1,20 +1,28 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, FileText, Settings, HelpCircle, Info } from 'lucide-react';
 
 const MENU_OPTIONS = [
-    { label: 'Meus documentos', onClick: () => console.log('Meus documentos') },
-    { label: 'Configurações', onClick: () => console.log('Configurações') },
-    { label: 'Ajuda', onClick: () => console.log('Ajuda') },
-    { label: 'Sobre o FastSign', onClick: () => console.log('Sobre o FastSign') },
+    { label: 'Meus documentos', icon: FileText, onClick: () => console.log('Meus documentos') },
+    { label: 'Configurações', icon: Settings, onClick: () => console.log('Configurações') },
+    { label: 'Ajuda', icon: HelpCircle, onClick: () => console.log('Ajuda') },
+    { label: 'Sobre o FastSign', icon: Info, onClick: () => console.log('Sobre o FastSign') },
 ];
 
 const Header = () => {
     const [menuOpen, setMenuOpen] = useState(false);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const buttonRef = useRef(null);
     const menuRef = useRef(null);
 
-    // Fecha o dropdown ao clicar fora dele
+    // Fecha o dropdown ao clicar fora dele (considerando botão E menu, já que agora vivem em lugares diferentes do DOM)
     useEffect(() => {
         const handleClickOutside = (e) => {
-            if (menuRef.current && !menuRef.current.contains(e.target)) {
+            if (
+                menuRef.current && !menuRef.current.contains(e.target) &&
+                buttonRef.current && !buttonRef.current.contains(e.target)
+            ) {
                 setMenuOpen(false);
             }
         };
@@ -22,109 +30,90 @@ const Header = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Calcula a posição do botão pra posicionar o menu certinho, já que ele não é mais filho do Header no DOM
+    const toggleMenu = () => {
+        if (!menuOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 8,
+                left: rect.left,
+            });
+        }
+        setMenuOpen((prev) => !prev);
+    };
+
+    const handleOptionClick = (onClick) => {
+        onClick();
+        setMenuOpen(false);
+    };
+
     return (
         <header
+            className="w-full px-6 py-4 flex items-center justify-between relative"
             style={{
-                position: 'sticky',
-                top: 0,
-                width: '100%',
-                zIndex: 50,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0 24px',
-                height: '52px',
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
-                backgroundColor: '#151522',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
+                background: "#0b0b12",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
             }}
         >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }} ref={menuRef}>
-                <button
-                    onClick={() => setMenuOpen((prev) => !prev)}
-                    style={{
-                        width: '28px',
-                        height: '28px',
-                        background: 'linear-gradient(135deg, #5b6af0 0%, #8b5cf6 100%)',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: 0,
-                    }}
-                >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path d="M2 4h10M2 7h10M2 10h6" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
-                </button>
-                <span style={{ fontSize: '15px', fontWeight: '500', color: '#ffffff', letterSpacing: '-0.01em' }}>FastSign</span>
-
-                {/* Dropdown flutuante */}
-                {menuOpen && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: '38px',
-                            left: 0,
-                            minWidth: '200px',
-                            background: 'rgba(20,20,28,0.98)',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            borderRadius: '10px',
-                            boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
-                            backdropFilter: 'blur(10px)',
-                            WebkitBackdropFilter: 'blur(10px)',
-                            padding: '6px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '2px',
-                        }}
-                    >
-                        {MENU_OPTIONS.map((option) => (
-                            <button
-                                key={option.label}
-                                onClick={() => {
-                                    option.onClick();
-                                    setMenuOpen(false);
-                                }}
-                                style={{
-                                    textAlign: 'left',
-                                    padding: '8px 10px',
-                                    fontSize: '13px',
-                                    color: '#e5e7eb',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    transition: 'background 0.15s',
-                                }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-                                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                            >
-                                {option.label}
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <button
-                onClick={() => console.log('Ir para login')}
+            <motion.button
+                ref={buttonRef}
+                whileTap={{ scale: 0.92 }}
+                onClick={toggleMenu}
+                className="w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
                 style={{
-                    padding: '6px 14px',
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: '#ffffff',
-                    background: 'linear-gradient(135deg, #5b6af0 0%, #7c5cf6 100%)',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
+                    background: menuOpen ? "rgba(91,106,240,0.18)" : "rgba(91,106,240,0.12)",
+                    border: "1px solid rgba(255,255,255,0.07)",
                 }}
             >
-                Entrar
-            </button>
+                <Menu size={17} style={{ color: "#8b93f7" }} />
+            </motion.button>
+
+            {/* Portal: renderiza direto no <body>, fora de qualquer overflow:hidden */}
+            {createPortal(
+                <AnimatePresence>
+                    {menuOpen && (
+                        <motion.div
+                            ref={menuRef}
+                            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                            className="w-56 rounded-2xl overflow-hidden"
+                            style={{
+                                position: 'fixed',
+                                top: menuPosition.top,
+                                left: menuPosition.left,
+                                background: "#14141f",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+                                zIndex: 9999,
+                            }}
+                        >
+                            <ul className="py-1.5">
+                                {MENU_OPTIONS.map((option, i) => {
+                                    const Icon = option.icon;
+                                    return (
+                                        <li key={i}>
+                                            <button
+                                                onClick={() => handleOptionClick(option.onClick)}
+                                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-sm text-gray-300 hover:text-white transition-colors"
+                                                style={{ background: "transparent" }}
+                                                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(91,106,240,0.08)")}
+                                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                                            >
+                                                <Icon size={15} style={{ color: "#5b6af0" }} />
+                                                {option.label}
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </motion.div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </header>
     );
 };
