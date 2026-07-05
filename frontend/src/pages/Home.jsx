@@ -115,7 +115,7 @@ export default function App() {
                             style={{
                                 marginTop: "auto",
                                 borderTop: "1px dashed rgba(255,255,255,0.1)",
-                                paddingTop: 8,
+                                paddingTop: 1,
                             }}
                         >
                             <p style={{ fontSize: 7, color: "rgba(255,255,255,0.25)", marginBottom: 4, letterSpacing: "0.05em" }}>
