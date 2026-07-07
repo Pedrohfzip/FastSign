@@ -8,7 +8,8 @@ import SignUp from '../pages/SignUp'
 import Login from '../pages/Login'
 import AddSignatories from '../pages/AddSignatories'   // ⬅️ novo
 import PublicSign from '../pages/PublicSign'            // ⬅️ novo
-
+import MyDocuments from '../pages/MyDocuments'
+import DocumentDetail from '../pages/DocumentDetail'
 
 
 const slideVariants = {
@@ -88,6 +89,15 @@ export default function AppRoutes() {
           <Route
             path="/assinar/:accessToken"
             element={<AnimatedPage direction={direction}><PublicSign /></AnimatedPage>}
+          />
+
+          <Route
+            path="/documents"
+            element={<AnimatedPage direction={direction}><ProtectedRoute><MyDocuments /></ProtectedRoute></AnimatedPage>}
+          />
+          <Route
+            path="/documents/:id"
+            element={<AnimatedPage direction={direction}><ProtectedRoute><DocumentDetail /></ProtectedRoute></AnimatedPage>}
           />
         </Routes>
       </AnimatePresence>

@@ -2,7 +2,7 @@ import path from 'path';
 import db from '../database/models/index.js';
 import storageService from './StorageService.js';
 
-const { Document, DocumentVersion, sequelize } = db;
+const { Document, DocumentVersion, Signatory, sequelize } = db;
 
 export async function createDocument(file, userId) {
     const title = path.parse(file.originalname).name;
@@ -77,8 +77,64 @@ export async function getDocumentFile(documentId, userId) {
 }
 
 export async function listDocuments(userId) {
-    return Document.findAll({
-        where: { userId }, // ⬅️ novo: só retorna documentos do usuário logado
-        order: [['createdAt', 'DESC']],
-    });
+    console.log(userId);
+    try {
+        const documents = await Document.findAll({
+            where: { userId },
+            include: [{ model: Signatory, as: 'signatories' }],
+            order: [['createdAt', 'DESC']],
+        });
+        // Enriquece cada documento com contagem de assinaturas
+        return documents.map((doc) => {
+            const signatories = doc.signatories || [];
+            const signedCount = signatories.filter((s) => s.status === 'SIGNED').length;
+
+            return {
+                id: doc.id,
+                title: doc.title,
+                originalName: doc.originalName,
+                status: doc.status,
+                createdAt: doc.createdAt,
+                totalSignatories: signatories.length,
+                signedCount,
+            };
+        });
+    } catch (err) {
+        console.error('[DocumentService.listDocuments]', err);
+        throw new Error('Erro ao buscar documentos.');
+    }
 }
+
+export async function getDocumentById(documentId, userId) {
+    const document = await Document.findByPk(documentId, {
+        include: [{ model: Signatory, as: 'signatories' }],
+    });
+
+    if (!document) {
+        const err = new Error('Documento não encontrado.');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    if (document.userId !== userId) {
+        const err = new Error('Você não tem permissão para ver este documento.');
+        err.statusCode = 403;
+        throw err;
+    }
+
+    return {
+        id: document.id,
+        title: document.title,
+        originalName: document.originalName,
+        status: document.status,
+        createdAt: document.createdAt,
+        signatories: (document.signatories || []).map((s) => ({
+            id: s.id,
+            name: s.name,
+            email: s.email,
+            status: s.status,
+            signedAt: s.signedAt,
+        })),
+    };
+}
+

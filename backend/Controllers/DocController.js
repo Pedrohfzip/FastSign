@@ -3,6 +3,7 @@ import {
     createDocument,
     getDocumentFile,
     listDocuments,
+    getDocumentById,
 } from '../Service/DocumentService.js';
 import {
     addSignatoriesToDocument,
@@ -11,7 +12,6 @@ import {
 
 const DocController = {
     async upload(req, res) {
-        console.log('DocController.upload called');
         try {
             if (!req.file) {
                 return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
@@ -104,6 +104,19 @@ const DocController = {
             console.error('[DocController.listSignatories]', err);
             return res.status(err.statusCode || 500).json({
                 error: err.message || 'Erro ao buscar signatários.',
+            });
+        }
+    },
+
+    async getById(req, res) {
+        try {
+            const { id } = req.params;
+            const document = await getDocumentById(id, req.userId);
+            return res.json(document);
+        } catch (err) {
+            console.error('[DocController.getById]', err);
+            return res.status(err.statusCode || 500).json({
+                error: err.message || 'Erro ao buscar documento.',
             });
         }
     },

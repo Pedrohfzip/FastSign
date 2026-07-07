@@ -2,15 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router';
-import { Menu, FileText, Settings, HelpCircle, Info, LogOut } from 'lucide-react';
+import { Menu, FileText, Settings, HelpCircle, Info, LogOut, Home } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const MENU_OPTIONS = [
-    { label: 'Meus documentos', icon: FileText, onClick: () => console.log('Meus documentos') },
-    { label: 'Configurações', icon: Settings, onClick: () => console.log('Configurações') },
-    { label: 'Ajuda', icon: HelpCircle, onClick: () => console.log('Ajuda') },
-    { label: 'Sobre o FastSign', icon: Info, onClick: () => console.log('Sobre o FastSign') },
-];
+
 
 const Header = () => {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -19,6 +14,14 @@ const Header = () => {
     const menuRef = useRef(null);
     const navigate = useNavigate();
     const { isAuthenticated, user, logout } = useAuth();
+
+    const MENU_OPTIONS = [
+        { label: 'Inicio', icon: Home, onClick: () => navigate('/') },
+        { label: 'Meus documentos', icon: FileText, onClick: () => navigate('/documents') },
+        { label: 'Configurações', icon: Settings, onClick: () => navigate('/settings') },
+        { label: 'Ajuda', icon: HelpCircle, onClick: () => navigate('/help') },
+        { label: 'Sobre o FastSign', icon: Info, onClick: () => navigate('/about') },
+    ];
 
     useEffect(() => {
         const handleClickOutside = (e) => {

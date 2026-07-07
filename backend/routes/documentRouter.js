@@ -9,6 +9,6 @@ docRouter.get('/', requireAuth, DocController.list);
 docRouter.get('/:id/file', requireAuth, DocController.getFile);
 docRouter.post('/:id/signatories', requireAuth, DocController.addSignatories);
 docRouter.get('/:id/signatories', requireAuth, DocController.listSignatories);
-
+docRouter.get('/:id', requireAuth, DocController.getById);
 
 export default docRouter;

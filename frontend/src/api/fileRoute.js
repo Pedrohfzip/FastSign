@@ -39,3 +39,8 @@ export const getSignatories = async (documentId) => {
     return response.data;
 };
 
+export const getDocumentDetail = async (documentId) => {
+    const response = await api.get(`/documents/${documentId}`);
+    return response.data;
+};
+
