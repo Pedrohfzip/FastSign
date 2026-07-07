@@ -1,4 +1,4 @@
-import  multer  from 'multer';
+import multer from 'multer';
 
 const ALLOWED_MIME_TYPES = ['application/pdf'];
 const MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
@@ -29,7 +29,7 @@ export const uploadMiddleware = multer({
  * Wrapper que transforma o callback do multer em Promise,
  * permitindo uso com async/await nos controllers.
  */
-export const handleUpload = (req, res) =>
+export const handleUpload = (req, res, next) =>
     new Promise((resolve, reject) => {
         uploadMiddleware(req, res, (err) => {
             console.log('Upload middleware result:', { err, file: req.file });
@@ -45,5 +45,6 @@ export const handleUpload = (req, res) =>
             }
             if (err) return reject(err);
             resolve();
+            next();
         });
     });

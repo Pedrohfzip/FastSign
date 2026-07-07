@@ -1,5 +1,5 @@
 import path from 'path';
-import db from '../database/models/index.js'; // ajuste o caminho se seu index.js estiver em outro lugar
+import db from '../database/models/index.js';
 import storageService from './StorageService.js';
 
 const { Document, DocumentVersion, sequelize } = db;
@@ -46,7 +46,6 @@ export async function createDocument(file, userId) {
             return { document, version };
         });
     } catch (err) {
-        // se o arquivo já tinha sido escrito mas o banco falhou, limpa o disco
         if (savedFile) {
             await storageService.deleteVersionFile(savedFile.filePath).catch(() => { });
         }
@@ -54,7 +53,7 @@ export async function createDocument(file, userId) {
     }
 }
 
-export async function getDocumentFile(documentId) {
+export async function getDocumentFile(documentId, userId) {
     const document = await Document.findByPk(documentId, {
         include: [{ model: DocumentVersion, as: 'currentVersion' }],
     });
@@ -65,13 +64,21 @@ export async function getDocumentFile(documentId) {
         throw err;
     }
 
+    // ⬇️ novo: garante que só o dono acessa o arquivo
+    if (document.userId !== userId) {
+        const err = new Error('Você não tem permissão para acessar este documento.');
+        err.statusCode = 403;
+        throw err;
+    }
+
     const buffer = await storageService.readVersionFile(document.currentVersion.filePath);
 
     return { buffer, originalName: document.originalName };
 }
 
-export async function listDocuments() {
+export async function listDocuments(userId) {
     return Document.findAll({
+        where: { userId }, // ⬅️ novo: só retorna documentos do usuário logado
         order: [['createdAt', 'DESC']],
     });
 }
