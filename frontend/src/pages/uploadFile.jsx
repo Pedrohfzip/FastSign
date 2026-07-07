@@ -23,9 +23,9 @@ let nextId = 0;
 
 export default function UploadScreen({ onContinue }) {
     const [dragging, setDragging] = useState(false);
-    // cada item: { id, file, status, progress, error }
+    // cada item: { id, file, status, progress, error, documentId }
     const [items, setItems] = useState([]);
-    const [submitting, setSubmitting] = useState(false); // novo
+    const [submitting, setSubmitting] = useState(false);
     const inputRef = useRef(null);
     const navigate = useNavigate()
 
@@ -33,7 +33,7 @@ export default function UploadScreen({ onContinue }) {
     const addFiles = useCallback((fileList) => {
         const incoming = Array.from(fileList)
             .filter((f) => f.name.toLowerCase().endsWith(".pdf"))
-            .map((file) => ({ id: nextId++, file, status: STATUS.PENDING, progress: 0, error: null }));
+            .map((file) => ({ id: nextId++, file, status: STATUS.PENDING, progress: 0, error: null, documentId: null }));
 
         if (incoming.length === 0) return;
 
@@ -44,11 +44,15 @@ export default function UploadScreen({ onContinue }) {
         setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, status: STATUS.UPLOADING, error: null } : it)));
 
         try {
-            await uploadDocument(item.file, (percent) => {
+            const response = await uploadDocument(item.file, (percent) => {
                 setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, progress: percent } : it)));
             });
             setItems((prev) =>
-                prev.map((it) => (it.id === item.id ? { ...it, status: STATUS.DONE, progress: 100 } : it))
+                prev.map((it) =>
+                    it.id === item.id
+                        ? { ...it, status: STATUS.DONE, progress: 100, documentId: response.document.id }
+                        : it
+                )
             );
             return true;
         } catch (err) {
@@ -97,7 +101,16 @@ export default function UploadScreen({ onContinue }) {
 
         const allOk = results.every(Boolean);
         if (allOk) {
-            navigate('/sign', { state: { files: items.map((it) => it.file) } });
+            // Fluxo hoje trata 1 documento por vez — usa o primeiro item enviado.
+            // Como uploadItem atualiza o state de forma assíncrona, lê o state mais
+            // atual via callback do setItems pra garantir que já temos o documentId.
+            setItems((prev) => {
+                const firstDocumentId = prev[0]?.documentId;
+                if (firstDocumentId) {
+                    navigate(`/documents/${firstDocumentId}/signatories`);
+                }
+                return prev;
+            });
         }
     };
 

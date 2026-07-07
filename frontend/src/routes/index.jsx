@@ -6,6 +6,9 @@ import UploadFile from '../pages/UploadFile'
 import SignScreen from '../pages/SignScreen'
 import SignUp from '../pages/SignUp'
 import Login from '../pages/Login'
+import AddSignatories from '../pages/AddSignatories'   // ⬅️ novo
+import PublicSign from '../pages/PublicSign'            // ⬅️ novo
+
 
 
 const slideVariants = {
@@ -67,6 +70,10 @@ export default function AppRoutes() {
             }
           />
           <Route
+            path="/documents/:id/signatories"
+            element={<AnimatedPage direction={direction}><ProtectedRoute><AddSignatories /></ProtectedRoute></AnimatedPage>}
+          />
+          <Route
             path="/sign"
             element={
               <AnimatedPage direction={direction}>
@@ -76,6 +83,12 @@ export default function AppRoutes() {
           />
           <Route path="/sign-up" element={<AnimatedPage direction={direction}><SignUp /></AnimatedPage>} />
           <Route path="/login" element={<AnimatedPage direction={direction}><Login /></AnimatedPage>} />
+
+          {/* rota PÚBLICA — sem ProtectedRoute, signatário externo não precisa de conta */}
+          <Route
+            path="/assinar/:accessToken"
+            element={<AnimatedPage direction={direction}><PublicSign /></AnimatedPage>}
+          />
         </Routes>
       </AnimatePresence>
     </div>

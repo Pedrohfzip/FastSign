@@ -29,4 +29,13 @@ export const getDocument = async (documentId) => {
     return response.data;
 };
 
+export const addSignatories = async (documentId, signatories) => {
+    const response = await api.post(`/documents/${documentId}/signatories`, { signatories });
+    return response.data;
+};
+
+export const getSignatories = async (documentId) => {
+    const response = await api.get(`/documents/${documentId}/signatories`);
+    return response.data;
+};
 
