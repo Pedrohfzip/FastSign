@@ -162,12 +162,12 @@ export default function AddSignatories() {
                 }}
             />
 
-            <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-10 scrollbar-hidden">
+            <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-10 overflow-y-auto scrollbar-hidden">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
-                    className="w-full max-w-lg flex flex-col gap-5"
+                    className="w-full max-w-lg flex flex-col gap-5 pb-10"
                 >
                     <button
                         onClick={() => navigate(-1)}
@@ -177,15 +177,14 @@ export default function AddSignatories() {
                         Voltar
                     </button>
 
-                    <div className="flex flex-col items-center text-center gap-2 mb-1">
+                    <div className="flex flex-col items-center text-center mb-1">
                         <div
                             className="w-11 h-11 rounded-xl flex items-center justify-center"
                             style={{ background: ACCENT_SOFT, border: `1px solid ${BORDER_SOFT}` }}
                         >
                             <UserPlus size={18} style={{ color: ACCENT }} />
                         </div>
-                        <h1 className="text-2xl font-semibold text-white">Quem precisa assinar?</h1>
-                        <p className="text-sm text-gray-400">Adicione nome e e-mail de cada signatário.</p>
+                        <h2 className="text-2xl font-semibold text-white">Quem precisa assinar?</h2>
                     </div>
 
                     {apiError && (
