@@ -2,8 +2,9 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, X, Mail, User, ArrowRight, ArrowLeft, Loader2, Link2, Check } from "lucide-react";
+import { UserPlus, X, Mail, User, ArrowRight, ArrowLeft, Loader2, Link2, Check, UserCheck, PenLine } from "lucide-react";
 import { addSignatories } from "../api/fileRoute";
+import { useAuth } from "../context/AuthContext";
 
 const ACCENT = "#5b6af0";
 const ACCENT_SOFT = "rgba(91,106,240,0.12)";
@@ -15,15 +16,22 @@ function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// Extrai o accessToken direto da URL do link gerado
+function extractToken(signLink) {
+    return signLink.split("/").pop();
+}
+
 export default function AddSignatories() {
     const { id: documentId } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
 
+    const [includeSelf, setIncludeSelf] = useState(false);
     const [rows, setRows] = useState([{ id: nextId++, name: "", email: "" }]);
     const [errors, setErrors] = useState({});
     const [submitting, setSubmitting] = useState(false);
     const [apiError, setApiError] = useState(null);
-    const [createdLinks, setCreatedLinks] = useState(null); // resultado após sucesso
+    const [createdLinks, setCreatedLinks] = useState(null);
 
     const addRow = () => {
         setRows((prev) => [...prev, { id: nextId++, name: "", email: "" }]);
@@ -59,6 +67,11 @@ export default function AddSignatories() {
         setSubmitting(true);
         try {
             const payload = rows.map(({ name, email }) => ({ name, email }));
+
+            if (includeSelf && user) {
+                payload.push({ name: user.name, email: user.email, });
+            }
+
             const result = await addSignatories(documentId, payload);
             setCreatedLinks(result.signatories);
         } catch (err) {
@@ -68,8 +81,11 @@ export default function AddSignatories() {
         }
     };
 
-    // Tela de sucesso — mostra os links gerados (já que ainda não enviamos e-mail automaticamente)
+    // Tela de sucesso
     if (createdLinks) {
+        const ownSignatory = createdLinks.find((s) => s.isSelf);
+        const otherSignatories = createdLinks.filter((s) => !s.isSelf);
+
         return (
             <div
                 className="w-full h-screen overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
@@ -97,52 +113,86 @@ export default function AddSignatories() {
                             </div>
                             <h1 className="text-2xl font-semibold text-white">Signatários adicionados!</h1>
                             <p className="text-sm text-gray-400">
-                                Copie os links abaixo e envie para cada signatário (envio automático por e-mail ainda não configurado).
+                                {otherSignatories.length > 0
+                                    ? "Copie os links abaixo e envie para cada signatário."
+                                    : "Tudo pronto."}
                             </p>
                         </div>
 
-                        <ul className="flex flex-col gap-2">
-                            {createdLinks.map((s) => (
-                                <li
-                                    key={s.id}
-                                    className="flex flex-col gap-2 px-4 py-3 rounded-xl"
-                                    style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                        {/* Card destacado: se o próprio dono é signatário, CTA direto pra assinar */}
+                        {ownSignatory && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex flex-col gap-3 px-4 py-4 rounded-xl"
+                                style={{ background: ACCENT_SOFT, border: `1px solid rgba(91,106,240,0.35)` }}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <UserCheck size={16} style={{ color: ACCENT }} />
+                                    <p className="text-sm font-medium text-white">É a sua vez de assinar</p>
+                                </div>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => navigate(`/assinar/${extractToken(ownSignatory.signLink)}`)}
+                                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
+                                    style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)` }}
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm font-medium text-white">{s.name}</p>
-                                            <p className="text-xs text-gray-400">{s.email}</p>
-                                        </div>
-                                    </div>
-                                    <div
-                                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-300 break-all"
-                                        style={{ background: "rgba(0,0,0,0.3)" }}
-                                    >
-                                        <Link2 size={13} className="shrink-0" style={{ color: ACCENT }} />
-                                        <span className="truncate">{s.signLink}</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => navigator.clipboard.writeText(s.signLink)}
-                                            className="ml-auto shrink-0 underline underline-offset-2"
-                                            style={{ color: ACCENT }}
-                                        >
-                                            Copiar
-                                        </button>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
+                                    <PenLine size={15} />
+                                    Assinar agora
+                                </motion.button>
+                            </motion.div>
+                        )}
 
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => navigate("/upload")}
-                            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-semibold text-white mt-2"
-                            style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)` }}
-                        >
-                            Concluir
-                            <ArrowRight size={16} />
-                        </motion.button>
+                        {/* Demais signatários — precisam do link copiado manualmente */}
+                        {otherSignatories.length > 0 && (
+                            <ul className="flex flex-col gap-2">
+                                {otherSignatories.map((s) => (
+                                    <li
+                                        key={s.id}
+                                        className="flex flex-col gap-2 px-4 py-3 rounded-xl"
+                                        style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm font-medium text-white">{s.name}</p>
+                                                <p className="text-xs text-gray-400">{s.email}</p>
+                                            </div>
+                                        </div>
+                                        <div
+                                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-300 break-all"
+                                            style={{ background: "rgba(0,0,0,0.3)" }}
+                                        >
+                                            <Link2 size={13} className="shrink-0" style={{ color: ACCENT }} />
+                                            <span className="truncate">{s.signLink}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => navigator.clipboard.writeText(s.signLink)}
+                                                className="ml-auto shrink-0 underline underline-offset-2"
+                                                style={{ color: ACCENT }}
+                                            >
+                                                Copiar
+                                            </button>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
+                        {/* Se só existe o próprio dono como signatário, o botão de assinar acima já resolve;
+                            senão, mantém opção de ir pro /upload sem assinar agora */}
+                        {!ownSignatory && (
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => navigate("/upload")}
+                                className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-semibold text-white mt-2"
+                                style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)` }}
+                            >
+                                Concluir
+                                <ArrowRight size={16} />
+                            </motion.button>
+                        )}
                     </motion.div>
                 </main>
             </div>
@@ -195,6 +245,41 @@ export default function AddSignatories() {
                             {apiError}
                         </div>
                     )}
+
+                    <button
+                        type="button"
+                        onClick={() => setIncludeSelf((prev) => !prev)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors"
+                        style={{
+                            background: includeSelf ? "rgba(91,106,240,0.1)" : "rgba(255,255,255,0.02)",
+                            border: `1px solid ${includeSelf ? "rgba(91,106,240,0.4)" : BORDER_SOFT}`,
+                        }}
+                    >
+                        <div
+                            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors"
+                            style={{
+                                background: includeSelf ? ACCENT : "transparent",
+                                border: `1.5px solid ${includeSelf ? ACCENT : "rgba(255,255,255,0.25)"}`,
+                            }}
+                        >
+                            <AnimatePresence>
+                                {includeSelf && (
+                                    <motion.div
+                                        initial={{ scale: 0, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0, opacity: 0 }}
+                                        transition={{ duration: 0.15 }}
+                                    >
+                                        <Check size={13} color="#fff" strokeWidth={3} />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        <UserCheck size={16} className="text-gray-400 shrink-0" />
+
+                        <span className="text-sm text-white font-medium">Eu também vou assinar</span>
+                    </button>
 
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                         <AnimatePresence>

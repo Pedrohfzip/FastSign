@@ -83,6 +83,7 @@ const DocController = {
                     name: s.name,
                     email: s.email,
                     status: s.status,
+                    isSelf: s.userId === req.userId,
                     // link que você vai copiar/testar manualmente por enquanto
                     signLink: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/assinar/${s.accessToken}`,
                 })),

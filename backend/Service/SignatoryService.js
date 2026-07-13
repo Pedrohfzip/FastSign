@@ -3,7 +3,7 @@ import db from '../database/models/index.js';
 import storageService from './StorageService.js';
 import { generateToken } from '../utils/generateToken.js';
 
-const { Document, DocumentVersion, Signatory, Signature } = db;
+const { Document, DocumentVersion, Signatory, Signature, User } = db;
 
 export async function addSignatoriesToDocument(documentId, signatoriesData, requestingUserId) {
     const document = await Document.findByPk(documentId);
@@ -26,16 +26,22 @@ export async function addSignatoriesToDocument(documentId, signatoriesData, requ
         throw err;
     }
 
+    const requestingUser = await User.findByPk(requestingUserId);
+
     const created = await Promise.all(
-        signatoriesData.map(({ name, email }) =>
-            Signatory.create({
+        signatoriesData.map(({ name, email }) => {
+            const isSelf =
+                requestingUser && email.trim().toLowerCase() === requestingUser.email.trim().toLowerCase();
+
+            return Signatory.create({
                 documentId,
                 name,
                 email,
                 accessToken: generateToken(),
                 status: 'PENDING',
-            })
-        )
+                userId: isSelf ? requestingUserId : null,
+            });
+        })
     );
 
     if (document.status === 'DRAFT') {
