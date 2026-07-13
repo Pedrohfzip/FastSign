@@ -6,8 +6,8 @@ import UploadFile from '../pages/UploadFile'
 import SignScreen from '../pages/SignScreen'
 import SignUp from '../pages/SignUp'
 import Login from '../pages/Login'
-import AddSignatories from '../pages/AddSignatories'   // ⬅️ novo
-import PublicSign from '../pages/PublicSign'            // ⬅️ novo
+import AddSignatories from '../pages/AddSignatories'
+import PublicSign from '../pages/PublicSign'
 import MyDocuments from '../pages/MyDocuments'
 import DocumentDetail from '../pages/DocumentDetail'
 
@@ -74,14 +74,17 @@ export default function AppRoutes() {
             path="/documents/:id/signatories"
             element={<AnimatedPage direction={direction}><ProtectedRoute><AddSignatories /></ProtectedRoute></AnimatedPage>}
           />
+
+          {/* rota PROTEGIDA — o próprio dono assina, precisa estar logado */}
           <Route
-            path="/sign"
+            path="/sign/:accessToken"
             element={
               <AnimatedPage direction={direction}>
                 <ProtectedRoute><SignScreen /></ProtectedRoute>
               </AnimatedPage>
             }
           />
+
           <Route path="/sign-up" element={<AnimatedPage direction={direction}><SignUp /></AnimatedPage>} />
           <Route path="/login" element={<AnimatedPage direction={direction}><Login /></AnimatedPage>} />
 

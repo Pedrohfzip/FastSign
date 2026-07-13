@@ -134,7 +134,7 @@ export default function AddSignatories() {
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    onClick={() => navigate(`/assinar/${extractToken(ownSignatory.signLink)}`)}
+                                    onClick={() => navigate(`/sign/${extractToken(ownSignatory.signLink)}`)}
                                     className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
                                     style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)` }}
                                 >

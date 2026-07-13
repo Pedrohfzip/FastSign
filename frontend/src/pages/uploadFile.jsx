@@ -156,9 +156,9 @@ export default function UploadScreen({ onContinue }) {
 
             {/* Main — centraliza o drop zone quando vazio; com itens, cresce naturalmente com o conteúdo */}
             <main className="relative z-10 flex-1 flex items-start justify-center px-6 py-6 scrollbar-hidden">
-                <div className="w-full max-w-lg flex flex-col gap-3 scrollbar-hidden pb-24">
+                <div className="w-full max-w-lg flex flex-col gap-3 scrollbar-hidden pb-24 ">
                     {/* pb-24 dá espaço embaixo pro botão flutuante não cobrir o fim do conteúdo */}
-
+                    <h3 className="text-[#262626] font-bold">Upload your files</h3>
                     {/* Drop zone — só aparece antes de qualquer arquivo ser adicionado */}
                     <AnimatePresence>
                         {!hasItems && (
