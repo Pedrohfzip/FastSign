@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import db from '../database/models/index.js';
 import storageService from './StorageService.js';
 import { generateToken } from '../utils/generateToken.js';
-
+import { sendSignatureInvite } from './EmailService.js';
 const { Document, DocumentVersion, Signatory, Signature, User } = db;
 
 export async function addSignatoriesToDocument(documentId, signatoriesData, requestingUserId) {
@@ -27,13 +27,14 @@ export async function addSignatoriesToDocument(documentId, signatoriesData, requ
     }
 
     const requestingUser = await User.findByPk(requestingUserId);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     const created = await Promise.all(
-        signatoriesData.map(({ name, email }) => {
+        signatoriesData.map(async ({ name, email }) => {
             const isSelf =
                 requestingUser && email.trim().toLowerCase() === requestingUser.email.trim().toLowerCase();
 
-            return Signatory.create({
+            const signatory = await Signatory.create({
                 documentId,
                 name,
                 email,
@@ -41,6 +42,19 @@ export async function addSignatoriesToDocument(documentId, signatoriesData, requ
                 status: 'PENDING',
                 userId: isSelf ? requestingUserId : null,
             });
+
+            // Não envia e-mail pro próprio dono — ele já tem o CTA "Assinar agora" direto no app
+            if (!isSelf) {
+                const signLink = `${frontendUrl}/assinar/${signatory.accessToken}`;
+                await sendSignatureInvite({
+                    to: email,
+                    signatoryName: name,
+                    documentTitle: document.title,
+                    signLink,
+                });
+            }
+
+            return signatory;
         })
     );
 
