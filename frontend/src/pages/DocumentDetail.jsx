@@ -206,21 +206,21 @@ export default function DocumentDetail() {
                                 )}
 
                                 {/* Botão de gerar resumo — estilizado, consistente com o resto do app */}
-                                {!summaryLoading && (
-                                    <motion.button
-                                        whileHover={{ scale: 1.01 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={getDocResume}
-                                        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity"
-                                        style={{
-                                            background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)`,
-                                            boxShadow: "0 4px 16px rgba(91,106,240,0.25)",
-                                        }}
-                                    >
-                                        <Sparkles size={14} />
-                                        {summary ? "Gerar novo resumo" : "Gerar resumo com IA"}
-                                    </motion.button>
-                                )}
+
+                                <motion.button
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={getDocResume}
+                                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity"
+                                    style={{
+                                        background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)`,
+                                        boxShadow: "0 4px 16px rgba(91,106,240,0.25)",
+                                    }}
+                                >
+                                    <Sparkles size={14} />
+                                    {summary ? "Gerar novo resumo" : "Gerar resumo com IA"}
+                                </motion.button>
+
                             </div>
                             {/* Lista de signatários */}
                             <div className="flex flex-col gap-2">

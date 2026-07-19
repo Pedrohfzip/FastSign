@@ -35,7 +35,7 @@ export async function summarizeText(text) {
     const truncated = text.slice(0, MAX_TEXT_LENGTH);
 
     const prompt = `Você é um assistente que resume documentos em português do Brasil.
-Leia o texto abaixo e escreva um resumo objetivo de 5 a 10 frases, capturando do que se trata o documento.
+Leia o texto abaixo e escreva um resumo objetivo de 20 a 30 frases, capturando do que se trata o documento.
 Não invente informações que não estejam no texto. Responda APENAS com o resumo, sem introduções como "Este documento trata de".
 
 TEXTO:

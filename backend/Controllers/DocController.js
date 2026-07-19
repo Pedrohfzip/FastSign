@@ -24,10 +24,6 @@ const DocController = {
             const userId = req.userId; // ⬅️ vem do requireAuth, não mais uuidv4()
             const { document, version } = await createDocument(req.file, userId);
 
-            await generateDocumentSummary(document.id, req.file.buffer).catch((err) =>
-                console.error('[DocController.upload] Falha ao gerar resumo em background:', err)
-            );
-
 
             return res.status(201).json({
                 message: 'Documento criado com sucesso.',
