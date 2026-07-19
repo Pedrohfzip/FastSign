@@ -53,6 +53,12 @@ export default (sequelize, DataTypes) => {
                 allowNull: true,
                 field: 'current_version_id',
             },
+            aiSummary: {
+                // ⬅️ novo
+                type: DataTypes.TEXT,
+                allowNull: true,
+                field: 'ai_summary',
+            },
         },
         {
             sequelize,

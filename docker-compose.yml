@@ -15,7 +15,7 @@ services:
       - DB_NAME=fastsign
       - DB_USER=postgres
       - DB_PASSWORD=123
-      - RESEND_API_KEY=re_cCYxukC7_1fHixGH35dhzHU1dvSS2XCFb
+      - RESEND_API_KEY=re_3M5KGokj_F8BDNogWjvA9gUdZc58P3RRp
       - EMAIL_FROM=FastSign <onboarding@resend.dev>
     volumes:
       - ./backend:/app

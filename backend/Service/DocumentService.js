@@ -1,7 +1,7 @@
 import path from 'path';
 import db from '../database/models/index.js';
 import storageService from './StorageService.js';
-
+import { extractTextFromPdf, summarizeText } from './AIService.js';
 const { Document, DocumentVersion, Signatory, sequelize } = db;
 
 export async function createDocument(file, userId) {
@@ -97,6 +97,7 @@ export async function listDocuments(userId) {
                 createdAt: doc.createdAt,
                 totalSignatories: signatories.length,
                 signedCount,
+                aiSummary: doc.aiSummary,
             };
         });
     } catch (err) {
@@ -128,6 +129,7 @@ export async function getDocumentById(documentId, userId) {
         originalName: document.originalName,
         status: document.status,
         createdAt: document.createdAt,
+        aiSummary: document.aiSummary,
         signatories: (document.signatories || []).map((s) => ({
             id: s.id,
             name: s.name,
@@ -136,5 +138,41 @@ export async function getDocumentById(documentId, userId) {
             signedAt: s.signedAt,
         })),
     };
+}
+export async function getDocumentResume(documentId, userId, fileBuffer) {
+    const text = await extractTextFromPdf(fileBuffer);
+    const summary = await summarizeText(text);
+    return summary;
+}
+export async function generateDocumentSummary(documentId, fileBuffer) {
+    try {
+        const text = await extractTextFromPdf(fileBuffer);
+        if (!text) return;
+
+        const summary = await summarizeText(text);
+        if (!summary) return;
+
+        await Document.update({ aiSummary: summary }, { where: { id: documentId } });
+        console.log(`[DocumentService] Resumo gerado para documento ${documentId}`);
+    } catch (err) {
+        console.error('[DocumentService.generateDocumentSummary]', err);
+        // silencioso — resumo é um "nice to have", não pode derrubar nada
+    }
+}
+
+export async function getDocumentBuffer(documentId) {
+    const document = await Document.findByPk(documentId, {
+        include: [{ model: DocumentVersion, as: 'currentVersion' }],
+    });
+
+    if (!document || !document.currentVersion) {
+        const err = new Error('Documento não encontrado.');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    const buffer = await storageService.readVersionFile(document.currentVersion.filePath);
+
+    return buffer;
 }
 

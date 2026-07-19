@@ -4,6 +4,9 @@ import {
     getDocumentFile,
     listDocuments,
     getDocumentById,
+    generateDocumentSummary,
+    getDocumentResume,
+    getDocumentBuffer
 } from '../Service/DocumentService.js';
 import {
     addSignatoriesToDocument,
@@ -13,12 +16,18 @@ import {
 const DocController = {
     async upload(req, res) {
         try {
+            console.log(req.file.buffer);
             if (!req.file) {
                 return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
             }
 
             const userId = req.userId; // ⬅️ vem do requireAuth, não mais uuidv4()
             const { document, version } = await createDocument(req.file, userId);
+
+            await generateDocumentSummary(document.id, req.file.buffer).catch((err) =>
+                console.error('[DocController.upload] Falha ao gerar resumo em background:', err)
+            );
+
 
             return res.status(201).json({
                 message: 'Documento criado com sucesso.',
@@ -118,6 +127,20 @@ const DocController = {
             console.error('[DocController.getById]', err);
             return res.status(err.statusCode || 500).json({
                 error: err.message || 'Erro ao buscar documento.',
+            });
+        }
+    },
+
+    async getResume(req, res) {
+        try {
+            const { id } = req.params;
+            const buffer = await getDocumentBuffer(id);
+            const summary = await getDocumentResume(id, req.userId, buffer);
+            return res.json(summary);
+        } catch (err) {
+            console.error('[DocController.getResume]', err);
+            return res.status(err.statusCode || 500).json({
+                error: err.message || 'Erro ao gerar resumo do documento.',
             });
         }
     },
