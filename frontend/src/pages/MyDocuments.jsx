@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react"; // ⬅️ adicionei useMemo
 import { useNavigate } from "react-router";
 import { motion } from "framer-motion";
-import { FileText, ArrowLeft, Loader2, Users, CheckCircle2 } from "lucide-react";
+import { FileText, ArrowLeft, Loader2, Users, CheckCircle2, Search, X } from "lucide-react"; // ⬅️ Search, X
 import { getDocuments } from "../api/fileRoute";
 
 const ACCENT = "#5b6af0";
@@ -20,6 +20,7 @@ export default function MyDocuments() {
     const [documents, setDocuments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [search, setSearch] = useState(""); // ⬅️ novo
 
     useEffect(() => {
         let cancelled = false;
@@ -38,6 +39,20 @@ export default function MyDocuments() {
         load();
         return () => { cancelled = true; };
     }, []);
+
+    // Filtra por título do documento OU nome de qualquer signatário
+    const filteredDocuments = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        if (!term) return documents;
+
+        return documents.filter((doc) => {
+            const titleMatch = doc.title?.toLowerCase().includes(term);
+            const signatoryMatch = doc.signatoryNames?.some((name) =>
+                name.toLowerCase().includes(term)
+            );
+            return titleMatch || signatoryMatch;
+        });
+    }, [documents, search]);
 
     const formatDate = (dateStr) => {
         return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -58,17 +73,42 @@ export default function MyDocuments() {
             <main className="relative z-10 flex-1 flex items-start justify-center px-6 py-10 overflow-y-auto scrollbar-hidden">
                 <div className="w-full max-w-2xl flex flex-col gap-5 pb-10">
                     <button
-                        onClick={() => navigate("/")}
+                        onClick={() => navigate(-1)}
                         className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors w-fit"
                     >
                         <ArrowLeft size={15} />
                         Voltar
                     </button>
 
-                    <div className="flex flex-col gap-1 mb-2">
+                    <div className="flex flex-col gap-1 mb-1">
                         <h1 className="text-2xl font-semibold text-white">Meus documentos</h1>
                         <p className="text-sm text-gray-400">Acompanhe o status de assinatura de cada documento.</p>
                     </div>
+
+                    {/* Campo de busca */}
+                    {!loading && !error && documents.length > 0 && (
+                        <div
+                            className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
+                            style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                        >
+                            <Search size={16} className="text-gray-500 shrink-0" />
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Buscar por nome do documento ou signatário..."
+                                className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
+                            />
+                            {search && (
+                                <button
+                                    onClick={() => setSearch("")}
+                                    className="text-gray-500 hover:text-white transition-colors shrink-0"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+                    )}
 
                     {loading ? (
                         <div className="flex justify-center py-16">
@@ -88,15 +128,23 @@ export default function MyDocuments() {
                         >
                             Você ainda não enviou nenhum documento.
                         </div>
+                    ) : filteredDocuments.length === 0 ? (
+                        <div
+                            className="rounded-xl px-6 py-10 text-center text-sm text-gray-400"
+                            style={{ background: "rgba(255,255,255,0.02)", border: `1px dashed ${BORDER_SOFT}` }}
+                        >
+                            Nenhum documento encontrado para "{search}".
+                        </div>
                     ) : (
                         <ul className="flex flex-col gap-2.5">
-                            {documents.map((doc) => {
+                            {filteredDocuments.map((doc) => {
                                 const statusInfo = STATUS_LABELS[doc.status] || STATUS_LABELS.DRAFT;
                                 const allSigned = doc.totalSignatories > 0 && doc.signedCount === doc.totalSignatories;
 
                                 return (
                                     <motion.li
                                         key={doc.id}
+                                        layout
                                         whileHover={{ scale: 1.005 }}
                                         onClick={() => navigate(`/documents/${doc.id}`)}
                                         className="flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-colors"

@@ -97,6 +97,7 @@ export async function listDocuments(userId) {
                 createdAt: doc.createdAt,
                 totalSignatories: signatories.length,
                 signedCount,
+                signatoryNames: signatories.map((s) => s.name),
                 aiSummary: doc.aiSummary,
             };
         });
