@@ -156,3 +156,34 @@ export async function signDocument(accessToken, { signatureImage, signatureType 
 
     return signatory;
 }
+
+export async function listPendingSignaturesForUser(userId) {
+    const signatories = await Signatory.findAll({
+        where: { userId },
+        include: [
+            {
+                model: Document,
+                as: 'document',
+                include: [{ model: User, as: 'owner' }],
+            },
+        ],
+        order: [['createdAt', 'DESC']],
+    });
+
+    // Filtra fora casos onde o documento foi excluído (segurança contra dados órfãos)
+    return signatories
+        .filter((s) => s.document)
+        .map((s) => ({
+            signatoryId: s.id,
+            accessToken: s.accessToken,
+            signatoryStatus: s.status,
+            signedAt: s.signedAt,
+            document: {
+                id: s.document.id,
+                title: s.document.title,
+                status: s.document.status,
+                createdAt: s.document.createdAt,
+                ownerName: s.document.owner?.name || 'Usuário desconhecido',
+            },
+        }));
+}

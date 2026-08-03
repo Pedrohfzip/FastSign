@@ -49,3 +49,7 @@ export const getDocumentResume = async (documentId) => {
     return response.data;
 }
 
+export const getDocumentsToSign = async () => {
+    const response = await api.get('/documents/to-sign');
+    return response.data;
+};

@@ -11,6 +11,7 @@ import {
 import {
     addSignatoriesToDocument,
     listSignatoriesForDocument,
+    listPendingSignaturesForUser,
 } from '../Service/SignatoryService.js';
 
 const DocController = {
@@ -141,6 +142,17 @@ const DocController = {
         }
     },
 
+    async listToSign(req, res) {
+        try {
+            const documents = await listPendingSignaturesForUser(req.userId);
+            return res.json(documents);
+        } catch (err) {
+            console.error('[DocController.listToSign]', err);
+            return res.status(err.statusCode || 500).json({
+                error: err.message || 'Erro ao buscar documentos pendentes de assinatura.',
+            });
+        }
+    },
 };
 
 export default DocController;
