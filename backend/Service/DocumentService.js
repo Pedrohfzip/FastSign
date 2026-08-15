@@ -2,6 +2,7 @@ import path from 'path';
 import db from '../database/models/index.js';
 import storageService from './StorageService.js';
 import { extractTextFromPdf, summarizeText } from './AIService.js';
+import { detectSignaturePosition } from './SignaturePositionService.js';
 const { Document, DocumentVersion, Signatory, sequelize } = db;
 
 export async function createDocument(file, userId) {
@@ -148,16 +149,30 @@ export async function getDocumentResume(documentId, userId, fileBuffer, signal) 
 export async function generateDocumentSummary(documentId, fileBuffer) {
     try {
         const text = await extractTextFromPdf(fileBuffer);
-        if (!text) return;
-
-        const summary = await summarizeText(text);
-        if (!summary) return;
-
-        await Document.update({ aiSummary: summary }, { where: { id: documentId } });
-        console.log(`[DocumentService] Resumo gerado para documento ${documentId}`);
+        if (text) {
+            const summary = await summarizeText(text);
+            if (summary) {
+                await Document.update({ aiSummary: summary }, { where: { id: documentId } });
+                console.log(`[DocumentService] Resumo gerado para documento ${documentId}`);
+            }
+        }
     } catch (err) {
         console.error('[DocumentService.generateDocumentSummary]', err);
         // silencioso — resumo é um "nice to have", não pode derrubar nada
+    }
+
+    try {
+        const { page: suggestedPage, x: suggestedX, y: suggestedY, source } = await detectSignaturePosition(fileBuffer);
+        await Document.update(
+            { suggestedPage, suggestedX, suggestedY },
+            { where: { id: documentId } }
+        );
+        console.log(
+            `[DocumentService] Posição de assinatura sugerida (${source}) para documento ${documentId}: página ${suggestedPage}, x=${suggestedX}, y=${suggestedY}`
+        );
+    } catch (err) {
+        console.error('[DocumentService.generateDocumentSummary]', err);
+        // silencioso — sugestão de posição é um "nice to have", não pode derrubar nada
     }
 }
 

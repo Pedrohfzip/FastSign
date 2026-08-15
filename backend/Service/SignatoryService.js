@@ -108,6 +108,29 @@ export async function getSignatoryByToken(accessToken) {
     return signatory;
 }
 
+export async function getDocumentFileByToken(accessToken) {
+    const signatory = await Signatory.findOne({
+        where: { accessToken },
+        include: [
+            {
+                model: Document,
+                as: 'document',
+                include: [{ model: DocumentVersion, as: 'currentVersion' }],
+            },
+        ],
+    });
+
+    if (!signatory || !signatory.document || !signatory.document.currentVersion) {
+        const err = new Error('Link de assinatura inválido.');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    const buffer = await storageService.readVersionFile(signatory.document.currentVersion.filePath);
+
+    return { buffer, originalName: signatory.document.originalName };
+}
+
 export async function signDocument(accessToken, { signatureImage, signatureType }, requestMeta) {
     const signatory = await Signatory.findOne({ where: { accessToken } });
 

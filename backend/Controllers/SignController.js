@@ -1,4 +1,4 @@
-import { getSignatoryByToken, signDocument } from '../Service/SignatoryService.js';
+import { getSignatoryByToken, getDocumentFileByToken, signDocument } from '../Service/SignatoryService.js';
 
 const SignController = {
     async getByToken(req, res) {
@@ -19,12 +19,33 @@ const SignController = {
                     status: signatory.document.status,
                     createdAt: signatory.document.createdAt,
                     ownerName: signatory.document.owner?.name || null,
+                    suggestedPosition: {
+                        page: signatory.document.suggestedPage || 1,
+                        x: signatory.document.suggestedX ?? 0.5,
+                        y: signatory.document.suggestedY ?? 0.8,
+                    },
                 },
             });
         } catch (err) {
             console.error('[SignController.getByToken]', err);
             return res.status(err.statusCode || 500).json({
                 error: err.message || 'Erro ao buscar dados da assinatura.',
+            });
+        }
+    },
+
+    async getFile(req, res) {
+        try {
+            const { accessToken } = req.params;
+            const { buffer, originalName } = await getDocumentFileByToken(accessToken);
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="${originalName}"`);
+            res.send(buffer);
+        } catch (err) {
+            console.error('[SignController.getFile]', err);
+            return res.status(err.statusCode || 500).json({
+                error: err.message || 'Erro ao carregar arquivo.',
             });
         }
     },

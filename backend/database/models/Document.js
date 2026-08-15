@@ -63,6 +63,21 @@ export default (sequelize, DataTypes) => {
                 allowNull: true,
                 field: 'ai_summary',
             },
+            suggestedPage: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                field: 'suggested_page',
+            },
+            suggestedX: {
+                type: DataTypes.FLOAT,
+                allowNull: true,
+                field: 'suggested_x',
+            },
+            suggestedY: {
+                type: DataTypes.FLOAT,
+                allowNull: true,
+                field: 'suggested_y',
+            },
         },
         {
             sequelize,

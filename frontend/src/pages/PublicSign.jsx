@@ -3,7 +3,8 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router";
 import { motion } from "framer-motion";
 import { FileText, PenLine, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
-import { getSignatureInfo, confirmSignature } from "../api/signRoute";
+import { getSignatureInfo, getSignatureFile, confirmSignature } from "../api/signRoute";
+import PdfPositionPicker from "../components/PdfPositionPicker";
 
 const ACCENT = "#5b6af0";
 const BORDER_SOFT = "rgba(255,255,255,0.07)";
@@ -17,15 +18,32 @@ export default function PublicSign() {
     const [signing, setSigning] = useState(false);
     const [signed, setSigned] = useState(false);
 
+    const [file, setFile] = useState(null);
+    const [position, setPosition] = useState(null);
+
     useEffect(() => {
         let cancelled = false;
 
         async function load() {
             try {
                 const result = await getSignatureInfo(accessToken);
-                if (!cancelled) {
-                    setData(result);
-                    if (result.signatory.status === "SIGNED") setSigned(true);
+                if (cancelled) return;
+
+                setData(result);
+                const alreadySigned = result.signatory.status === "SIGNED";
+                if (alreadySigned) setSigned(true);
+
+                // Pré-posiciona a assinatura no ponto sugerido pela heurística — o usuário
+                // ainda pode tocar em outro lugar do documento pra sobrescrever.
+                if (result.document.suggestedPosition) {
+                    setPosition(result.document.suggestedPosition);
+                }
+
+                // Só busca o arquivo se ainda falta assinar — evita download desnecessário.
+                if (!alreadySigned) {
+                    getSignatureFile(accessToken)
+                        .then((blob) => { if (!cancelled) setFile(blob); })
+                        .catch(() => { /* o picker mostra seu próprio erro de carregamento */ });
                 }
             } catch (err) {
                 if (!cancelled) setError(err?.response?.data?.error || "Link inválido ou expirado.");
@@ -53,7 +71,7 @@ export default function PublicSign() {
 
     return (
         <div
-            className="w-full h-screen overflow-hidden bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
+            className="w-full h-screen overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
             style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
         >
             <div
@@ -63,8 +81,8 @@ export default function PublicSign() {
                 }}
             />
 
-            <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-6 scrollbar-hidden">
-                <div className="w-full max-w-md flex flex-col items-center text-center gap-5">
+            <main className="relative z-10 flex-1 flex items-start justify-center px-6 py-10 overflow-y-auto scrollbar-hidden">
+                <div className="w-full max-w-lg flex flex-col items-center text-center gap-5 pb-10">
                     {loading ? (
                         <Loader2 size={28} className="text-white animate-spin" />
                     ) : error ? (
@@ -106,6 +124,15 @@ export default function PublicSign() {
                                 Olá, <strong>{data?.signatory?.name}</strong>. O documento{" "}
                                 <strong>{data?.document?.title}</strong> está pronto para sua assinatura.
                             </p>
+
+                            <div className="w-full">
+                                <PdfPositionPicker
+                                    file={file}
+                                    position={position}
+                                    onPositionChange={setPosition}
+                                    disabled={signing}
+                                />
+                            </div>
 
                             <motion.button
                                 whileHover={{ scale: signing ? 1 : 1.03 }}
