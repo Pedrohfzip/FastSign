@@ -130,16 +130,35 @@ const DocController = {
     },
 
     async getResume(req, res) {
+        const controller = new AbortController();
+        const onClose = () => {
+            // só cancela se a resposta ainda não terminou — não queremos abortar algo que já foi entregue
+            if (!res.writableEnded) {
+                controller.abort();
+            }
+        };
+        req.on('close', onClose);
+
         try {
             const { id } = req.params;
             const buffer = await getDocumentBuffer(id);
-            const summary = await getDocumentResume(id, req.userId, buffer);
-            return res.json(summary);
+            const summary = await getDocumentResume(id, req.userId, buffer, controller.signal);
+            if (!res.writableEnded) {
+                return res.json(summary);
+            }
         } catch (err) {
+            if (err?.name === 'AbortError') {
+                console.log(`[DocController.getResume] cliente desconectou, resumo cancelado (doc ${req.params.id})`);
+                return;
+            }
             console.error('[DocController.getResume]', err);
-            return res.status(err.statusCode || 500).json({
-                error: err.message || 'Erro ao gerar resumo do documento.',
-            });
+            if (!res.writableEnded) {
+                return res.status(err.statusCode || 500).json({
+                    error: err.message || 'Erro ao gerar resumo do documento.',
+                });
+            }
+        } finally {
+            req.off('close', onClose);
         }
     },
 

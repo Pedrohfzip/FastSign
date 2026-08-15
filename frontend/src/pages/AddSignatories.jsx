@@ -27,7 +27,7 @@ export default function AddSignatories() {
     const { user } = useAuth();
 
     const [includeSelf, setIncludeSelf] = useState(false);
-    const [rows, setRows] = useState([{ id: nextId++, name: "", email: "" }]);
+    const [rows, setRows] = useState([]);
     const [errors, setErrors] = useState({});
     const [submitting, setSubmitting] = useState(false);
     const [apiError, setApiError] = useState(null);
@@ -62,6 +62,14 @@ export default function AddSignatories() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setApiError(null);
+
+        // Precisa de pelo menos um assinante no total: pode ser só eu, eu + outros, ou só outros.
+        const totalSigners = rows.length + (includeSelf ? 1 : 0);
+        if (totalSigners === 0) {
+            setApiError('Adicione pelo menos um signatário, ou marque "Eu também vou assinar".');
+            return;
+        }
+
         if (!validate()) return;
 
         setSubmitting(true);
@@ -295,15 +303,13 @@ export default function AddSignatories() {
                                 >
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-gray-500">Signatário {index + 1}</span>
-                                        {rows.length > 1 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => removeRow(row.id)}
-                                                className="text-gray-500 hover:text-red-400 transition-colors"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => removeRow(row.id)}
+                                            className="text-gray-500 hover:text-red-400 transition-colors"
+                                        >
+                                            <X size={14} />
+                                        </button>
                                     </div>
 
                                     <div
@@ -349,6 +355,12 @@ export default function AddSignatories() {
                             ))}
                         </AnimatePresence>
 
+                        {rows.length === 0 && includeSelf && (
+                            <p className="text-xs text-gray-500 text-center -mt-1">
+                                Só você vai assinar este documento.
+                            </p>
+                        )}
+
                         <button
                             type="button"
                             onClick={addRow}
@@ -356,7 +368,7 @@ export default function AddSignatories() {
                             style={{ border: `1px dashed ${BORDER_SOFT}` }}
                         >
                             <UserPlus size={14} />
-                            Adicionar outro signatário
+                            {rows.length === 0 ? "Adicionar signatário" : "Adicionar outro signatário"}
                         </button>
 
                         <motion.button

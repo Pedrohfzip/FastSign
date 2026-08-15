@@ -140,9 +140,9 @@ export async function getDocumentById(documentId, userId) {
         })),
     };
 }
-export async function getDocumentResume(documentId, userId, fileBuffer) {
-    const text = await extractTextFromPdf(fileBuffer);
-    const summary = await summarizeText(text);
+export async function getDocumentResume(documentId, userId, fileBuffer, signal) {
+    const text = await extractTextFromPdf(fileBuffer, signal);
+    const summary = await summarizeText(text, signal);
     return summary;
 }
 export async function generateDocumentSummary(documentId, fileBuffer) {

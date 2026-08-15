@@ -1,29 +1,25 @@
+// Tela de detalhes de um documento que o usuário logado precisa assinar.
+// Mostra informações do documento antes de levar para a tela de confirmação da assinatura.
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import { FileText, ArrowLeft, Loader2, CheckCircle2, Clock, Mail, Sparkles, User } from "lucide-react";
-import { getDocumentDetail, getDocumentResume } from "../api/fileRoute";
+import { FileText, ArrowLeft, Loader2, AlertCircle, PenLine, CheckCircle2, Clock, Mail, User, Sparkles } from "lucide-react";
+import { getSignatureInfo } from "../api/signRoute";
+import { getDocumentResume } from "../api/fileRoute";
 
 const ACCENT = "#5b6af0";
 const ACCENT_SOFT = "rgba(91,106,240,0.12)";
 const BORDER_SOFT = "rgba(255,255,255,0.07)";
 
-const STATUS_LABELS = {
-    DRAFT: { label: "Rascunho", color: "#6b6b80" },
-    PENDING: { label: "Aguardando assinaturas", color: "#facc15" },
-    IN_PROGRESS: { label: "Em andamento", color: "#5b6af0" },
-    COMPLETED: { label: "Concluído", color: "#4ade80" },
-    CANCELLED: { label: "Cancelado", color: "#f87171" },
-};
-
-export default function DocumentDetail() {
-    const { id } = useParams();
+export default function DocumentToSignDetail() {
+    const { accessToken } = useParams();
     const navigate = useNavigate();
 
-    const [document, setDocument] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [data, setData] = useState(null);
     const [error, setError] = useState(null);
+
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [summaryError, setSummaryError] = useState(null);
     const [summary, setSummary] = useState(null);
@@ -37,11 +33,10 @@ export default function DocumentDetail() {
 
         async function load() {
             try {
-                const data = await getDocumentDetail(id);
-                console.log(data);
-                if (!cancelled) setDocument(data);
+                const result = await getSignatureInfo(accessToken);
+                if (!cancelled) setData(result);
             } catch (err) {
-                if (!cancelled) setError(err?.response?.data?.error || "Erro ao carregar documento.");
+                if (!cancelled) setError(err?.response?.data?.error || "Link inválido ou expirado.");
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -49,14 +44,13 @@ export default function DocumentDetail() {
 
         load();
         return () => { cancelled = true; };
-    }, [id]);
+    }, [accessToken]);
 
-    const formatDateTime = (dateStr) => {
+    const formatDate = (dateStr) => {
         if (!dateStr) return null;
-        return new Date(dateStr).toLocaleString('pt-BR', {
-            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-        });
+        return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
     };
+
     const getDocResume = async () => {
         const controller = new AbortController();
         summaryAbortRef.current = controller;
@@ -64,7 +58,7 @@ export default function DocumentDetail() {
         setSummaryLoading(true);
         setSummaryError(null);
         try {
-            const result = await getDocumentResume(id, controller.signal);
+            const result = await getDocumentResume(data.document.id, controller.signal);
             setSummary(result);
         } catch (err) {
             if (axios.isCancel(err)) return; // usuário saiu da página — ignora silenciosamente
@@ -72,7 +66,9 @@ export default function DocumentDetail() {
         } finally {
             if (!controller.signal.aborted) setSummaryLoading(false);
         }
-    }
+    };
+
+    const isSigned = data?.signatory?.status === "SIGNED";
 
     return (
         <div
@@ -102,9 +98,10 @@ export default function DocumentDetail() {
                         </div>
                     ) : error ? (
                         <div
-                            className="rounded-xl px-4 py-3 text-sm"
+                            className="rounded-xl px-4 py-3 text-sm flex items-center gap-2"
                             style={{ background: "rgba(240,91,91,0.1)", border: "1px solid rgba(240,91,91,0.25)", color: "#f87171" }}
                         >
+                            <AlertCircle size={15} className="shrink-0" />
                             {error}
                         </div>
                     ) : (
@@ -126,22 +123,28 @@ export default function DocumentDetail() {
                                     >
                                         <FileText size={18} style={{ color: ACCENT }} />
                                     </div>
-                                    <h1 className="text-xl font-semibold text-white">{document.title}</h1>
-                                    {(() => {
-                                        const statusInfo = STATUS_LABELS[document.status] || STATUS_LABELS.DRAFT;
-                                        return (
-                                            <span
-                                                className="text-xs font-medium px-2.5 py-1 rounded-full"
-                                                style={{
-                                                    color: statusInfo.color,
-                                                    background: `${statusInfo.color}1a`,
-                                                    border: `1px solid ${statusInfo.color}4d`,
-                                                }}
-                                            >
-                                                {statusInfo.label}
-                                            </span>
-                                        );
-                                    })()}
+                                    <h1 className="text-xl font-semibold text-white">{data.document.title}</h1>
+
+                                    <span
+                                        className="text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1"
+                                        style={{
+                                            color: isSigned ? "#4ade80" : "#facc15",
+                                            background: isSigned ? "rgba(74,222,128,0.1)" : "rgba(250,204,21,0.1)",
+                                            border: `1px solid ${isSigned ? "rgba(74,222,128,0.3)" : "rgba(250,204,21,0.3)"}`,
+                                        }}
+                                    >
+                                        {isSigned ? (
+                                            <>
+                                                <CheckCircle2 size={11} />
+                                                Assinado por você
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Clock size={11} />
+                                                Aguardando sua assinatura
+                                            </>
+                                        )}
+                                    </span>
                                 </div>
 
                                 <div style={{ borderTop: `1px solid ${BORDER_SOFT}` }} />
@@ -152,23 +155,25 @@ export default function DocumentDetail() {
                                         <User size={14} className="text-gray-500 shrink-0" />
                                         <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
                                             <p className="text-xs text-gray-500 shrink-0">Enviado por</p>
-                                            <p className="text-sm text-white truncate text-right">Você</p>
+                                            <p className="text-sm text-white truncate text-right">{data.document.ownerName || "Usuário desconhecido"}</p>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-3">
-                                        <Clock size={14} className="text-gray-500 shrink-0" />
-                                        <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
-                                            <p className="text-xs text-gray-500 shrink-0">Data de envio</p>
-                                            <p className="text-sm text-white truncate text-right">{formatDateTime(document.createdAt)}</p>
+                                    {data.document.createdAt && (
+                                        <div className="flex items-center gap-3">
+                                            <Clock size={14} className="text-gray-500 shrink-0" />
+                                            <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
+                                                <p className="text-xs text-gray-500 shrink-0">Data de envio</p>
+                                                <p className="text-sm text-white truncate text-right">{formatDate(data.document.createdAt)}</p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
                                     <div className="flex items-center gap-3">
-                                        <FileText size={14} className="text-gray-500 shrink-0" />
+                                        <Mail size={14} className="text-gray-500 shrink-0" />
                                         <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
-                                            <p className="text-xs text-gray-500 shrink-0">Arquivo</p>
-                                            <p className="text-sm text-white truncate text-right">{document.originalName}</p>
+                                            <p className="text-xs text-gray-500 shrink-0">Assinando como</p>
+                                            <p className="text-sm text-white truncate text-right">{data.signatory.name} · {data.signatory.email}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -179,7 +184,6 @@ export default function DocumentDetail() {
                                 <div className="flex flex-col gap-2.5">
                                     <AnimatePresence mode="wait">
                                         {summaryLoading ? (
-                                            // Estado de loading — ícone animado + skeleton do texto
                                             <motion.div
                                                 key="loading"
                                                 initial={{ opacity: 0 }}
@@ -207,7 +211,6 @@ export default function DocumentDetail() {
                                                     </motion.p>
                                                 </div>
 
-                                                {/* Skeleton — linhas de texto "fantasma" pulsando, sugerindo que o resumo está sendo escrito */}
                                                 <div className="flex flex-col gap-1.5 pl-1">
                                                     {[92, 78, 60].map((w, i) => (
                                                         <motion.div
@@ -268,50 +271,19 @@ export default function DocumentDetail() {
                                         </button>
                                     )}
                                 </div>
-
-                                <div style={{ borderTop: `1px solid ${BORDER_SOFT}` }} />
-
-                                {/* Lista de signatários */}
-                                <div className="flex flex-col gap-3.5">
-                                    <p className="text-xs text-gray-500">
-                                        {document.signatories.length} signatário(s)
-                                    </p>
-
-                                    {document.signatories.length === 0 ? (
-                                        <p className="text-sm text-gray-400 text-center py-2">
-                                            Nenhum signatário adicionado ainda.
-                                        </p>
-                                    ) : (
-                                        document.signatories.map((sig) => {
-                                            const isSigned = sig.status === "SIGNED";
-                                            return (
-                                                <div key={sig.id} className="flex items-center gap-3">
-                                                    {isSigned ? (
-                                                        <CheckCircle2 size={14} className="shrink-0" style={{ color: "#4ade80" }} />
-                                                    ) : (
-                                                        <Clock size={14} className="shrink-0" style={{ color: "#facc15" }} />
-                                                    )}
-
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm text-white truncate">{sig.name}</p>
-                                                        <p className="text-xs text-gray-500 flex items-center gap-1 truncate">
-                                                            <Mail size={11} className="shrink-0" />
-                                                            {sig.email}
-                                                        </p>
-                                                    </div>
-
-                                                    <span
-                                                        className="text-xs font-medium shrink-0"
-                                                        style={{ color: isSigned ? "#4ade80" : "#facc15" }}
-                                                    >
-                                                        {isSigned ? "Assinado" : "Pendente"}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })
-                                    )}
-                                </div>
                             </div>
+
+                            {/* CTA — leva para a tela de confirmação da assinatura */}
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => navigate(`/sign/${accessToken}`)}
+                                className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-semibold text-white"
+                                style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)`, boxShadow: "0 8px 24px rgba(91, 106, 240, 0.3)" }}
+                            >
+                                <PenLine size={16} />
+                                {isSigned ? "Ver assinatura" : "Assinar documento"}
+                            </motion.button>
                         </motion.div>
                     )}
                 </div>

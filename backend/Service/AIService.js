@@ -5,7 +5,7 @@ const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b';
 
 const MAX_TEXT_LENGTH = 6000;
 
-export async function extractTextFromPdf(buffer) {
+export async function extractTextFromPdf(buffer, signal) {
     try {
         const uint8Array = new Uint8Array(buffer);
         const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
@@ -14,6 +14,10 @@ export async function extractTextFromPdf(buffer) {
         let fullText = '';
 
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            // pdfjs-dist não aceita signal nativamente — checamos entre páginas, único ponto possível de interromper.
+            if (signal?.aborted) {
+                throw new DOMException('Aborted', 'AbortError');
+            }
             const page = await pdf.getPage(pageNum);
             const textContent = await page.getTextContent();
             const pageText = textContent.items.map((item) => item.str).join(' ');
@@ -22,12 +26,13 @@ export async function extractTextFromPdf(buffer) {
 
         return fullText.trim();
     } catch (err) {
+        if (err?.name === 'AbortError') throw err; // cancelamento — repassa pro chamador, não é falha de extração
         console.error('[AIService.extractTextFromPdf]', err);
         return '';
     }
 }
 
-export async function summarizeText(text) {
+export async function summarizeText(text, signal) {
     if (!text || text.trim().length < 20) {
         return null;
     }
@@ -64,6 +69,7 @@ RESUMO EM TÓPICOS:`;
                 },
                 keep_alive: "10m",
             }),
+            signal,
         });
 
         if (!response.ok) {
@@ -74,6 +80,7 @@ RESUMO EM TÓPICOS:`;
         const data = await response.json();
         return data.response?.trim() || null;
     } catch (err) {
+        if (err?.name === 'AbortError') throw err; // cancelamento — repassa pro chamador
         console.error('[AIService.summarizeText]', err);
         return null;
     }

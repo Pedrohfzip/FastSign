@@ -90,7 +90,13 @@ export async function listSignatoriesForDocument(documentId, requestingUserId) {
 export async function getSignatoryByToken(accessToken) {
     const signatory = await Signatory.findOne({
         where: { accessToken },
-        include: [{ model: Document, as: 'document' }],
+        include: [
+            {
+                model: Document,
+                as: 'document',
+                include: [{ model: User, as: 'owner' }],
+            },
+        ],
     });
 
     if (!signatory) {

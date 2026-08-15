@@ -10,6 +10,7 @@ import AddSignatories from '../pages/AddSignatories'
 import PublicSign from '../pages/PublicSign'
 import MyDocuments from '../pages/MyDocuments'
 import DocumentDetail from '../pages/DocumentDetail'
+import DocumentToSignDetail from '../pages/DocumentToSignDetail'
 
 
 const slideVariants = {
@@ -73,6 +74,16 @@ export default function AppRoutes() {
           <Route
             path="/documents/:id/signatories"
             element={<AnimatedPage direction={direction}><ProtectedRoute><AddSignatories /></ProtectedRoute></AnimatedPage>}
+          />
+
+          {/* rota PROTEGIDA — tela de detalhes de um documento que o usuário logado precisa assinar */}
+          <Route
+            path="/documents/to-sign/:accessToken"
+            element={
+              <AnimatedPage direction={direction}>
+                <ProtectedRoute><DocumentToSignDetail /></ProtectedRoute>
+              </AnimatedPage>
+            }
           />
 
           {/* rota PROTEGIDA — o próprio dono assina, precisa estar logado */}

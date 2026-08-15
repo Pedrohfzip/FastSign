@@ -44,8 +44,8 @@ export const getDocumentDetail = async (documentId) => {
     return response.data;
 };
 
-export const getDocumentResume = async (documentId) => {
-    const response = await api.get(`/documents/${documentId}/resume`);
+export const getDocumentResume = async (documentId, signal) => {
+    const response = await api.get(`/documents/${documentId}/resume`, { signal });
     return response.data;
 }
 

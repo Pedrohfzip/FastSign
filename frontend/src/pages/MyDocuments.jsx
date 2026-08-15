@@ -328,7 +328,7 @@ export default function MyDocuments() {
                                                         key={item.signatoryId}
                                                         layout
                                                         whileHover={{ scale: 1.005 }}
-                                                        onClick={() => navigate(`/sign/${item.accessToken}`)}
+                                                        onClick={() => navigate(`/documents/to-sign/${item.accessToken}`)}
                                                         className="flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-colors"
                                                         style={{
                                                             background: isSigned ? "rgba(255,255,255,0.03)" : "rgba(91,106,240,0.06)",

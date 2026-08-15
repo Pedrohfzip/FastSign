@@ -13,8 +13,12 @@ const SignController = {
                     status: signatory.status,
                 },
                 document: {
+                    id: signatory.document.id,
                     title: signatory.document.title,
                     originalName: signatory.document.originalName,
+                    status: signatory.document.status,
+                    createdAt: signatory.document.createdAt,
+                    ownerName: signatory.document.owner?.name || null,
                 },
             });
         } catch (err) {
