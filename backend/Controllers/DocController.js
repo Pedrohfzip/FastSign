@@ -6,7 +6,8 @@ import {
     getDocumentById,
     generateDocumentSummary,
     getDocumentResume,
-    getDocumentBuffer
+    getDocumentBuffer,
+    deleteDocument
 } from '../Service/DocumentService.js';
 import {
     addSignatoriesToDocument,
@@ -138,6 +139,19 @@ const DocController = {
             console.error('[DocController.getResume]', err);
             return res.status(err.statusCode || 500).json({
                 error: err.message || 'Erro ao gerar resumo do documento.',
+            });
+        }
+    },
+
+    async remove(req, res) {
+        try {
+            const { id } = req.params;
+            await deleteDocument(id, req.userId);
+            return res.status(204).send();
+        } catch (err) {
+            console.error('[DocController.remove]', err);
+            return res.status(err.statusCode || 500).json({
+                error: err.message || 'Erro ao excluir documento.',
             });
         }
     },

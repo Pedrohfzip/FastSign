@@ -161,6 +161,26 @@ export async function generateDocumentSummary(documentId, fileBuffer) {
     }
 }
 
+export async function deleteDocument(documentId, userId) {
+    const document = await Document.findByPk(documentId);
+
+    if (!document) {
+        const err = new Error('Documento não encontrado.');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    if (document.userId !== userId) {
+        const err = new Error('Você não tem permissão para excluir este documento.');
+        err.statusCode = 403;
+        throw err;
+    }
+
+    // Remove o registro (e, em cascata no banco, versões e signatários) antes de apagar os arquivos.
+    await document.destroy();
+    await storageService.deleteDocumentDir(documentId).catch(() => { });
+}
+
 export async function getDocumentBuffer(documentId) {
     const document = await Document.findByPk(documentId, {
         include: [{ model: DocumentVersion, as: 'currentVersion' }],

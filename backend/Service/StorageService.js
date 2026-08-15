@@ -42,6 +42,14 @@ async function deleteVersionFile(relativePath) {
     }
 }
 
+async function deleteDocumentDir(documentId) {
+    try {
+        await fs.rm(getDocumentDir(documentId), { recursive: true, force: true });
+    } catch (err) {
+        if (err.code !== 'ENOENT') throw err; // ignora se já não existe
+    }
+}
+
 function resolveFullPath(relativePath) {
     return path.join(STORAGE_ROOT, relativePath);
 }
@@ -50,6 +58,7 @@ export default {
     saveVersionFile,
     readVersionFile,
     deleteVersionFile,
+    deleteDocumentDir,
     resolveFullPath,
     STORAGE_ROOT,
 };

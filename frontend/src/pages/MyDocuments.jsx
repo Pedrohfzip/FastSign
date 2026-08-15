@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, ArrowLeft, Loader2, Users, CheckCircle2, Search, X, PenLine, Clock } from "lucide-react";
-import { getDocuments, getDocumentsToSign } from "../api/fileRoute";
+import { FileText, ArrowLeft, Loader2, Users, CheckCircle2, Search, X, PenLine, Clock, Trash2, AlertTriangle } from "lucide-react";
+import { getDocuments, getDocumentsToSign, deleteDocument } from "../api/fileRoute";
 
 const ACCENT = "#5b6af0";
 const BORDER_SOFT = "rgba(255,255,255,0.07)";
@@ -30,6 +30,10 @@ export default function MyDocuments() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState("");
+
+    const [docToDelete, setDocToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -79,6 +83,21 @@ export default function MyDocuments() {
 
     const formatDate = (dateStr) => {
         return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!docToDelete) return;
+        setDeleting(true);
+        setDeleteError(null);
+        try {
+            await deleteDocument(docToDelete.id);
+            setDocuments((prev) => prev.filter((doc) => doc.id !== docToDelete.id));
+            setDocToDelete(null);
+        } catch (err) {
+            setDeleteError(err?.response?.data?.error || "Erro ao excluir documento.");
+        } finally {
+            setDeleting(false);
+        }
     };
 
     return (
@@ -265,6 +284,18 @@ export default function MyDocuments() {
                                                         >
                                                             {statusInfo.label}
                                                         </span>
+
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setDeleteError(null);
+                                                                setDocToDelete(doc);
+                                                            }}
+                                                            title="Excluir documento"
+                                                            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors"
+                                                        >
+                                                            <Trash2 size={15} />
+                                                        </button>
                                                     </motion.li>
                                                 );
                                             })}
@@ -358,6 +389,74 @@ export default function MyDocuments() {
                     )}
                 </div>
             </main>
+
+            <AnimatePresence>
+                {docToDelete && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-20 flex items-center justify-center px-6"
+                        style={{ background: "rgba(0,0,0,0.6)" }}
+                        onClick={() => !deleting && setDocToDelete(null)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                            transition={{ duration: 0.15 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full max-w-sm rounded-2xl p-5 flex flex-col gap-4"
+                            style={{ background: "#15151f", border: `1px solid ${BORDER_SOFT}` }}
+                        >
+                            <div className="flex items-start gap-3">
+                                <div
+                                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                    style={{ background: "rgba(248,113,113,0.12)" }}
+                                >
+                                    <AlertTriangle size={16} style={{ color: "#f87171" }} />
+                                </div>
+                                <div className="flex flex-col gap-1 min-w-0">
+                                    <h2 className="text-sm font-semibold text-white">Excluir documento</h2>
+                                    <p className="text-sm text-gray-400">
+                                        Tem certeza que deseja excluir{" "}
+                                        <span className="text-gray-200 font-medium">"{docToDelete.title}"</span>?
+                                        Essa ação não pode ser desfeita.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {deleteError && (
+                                <div
+                                    className="rounded-lg px-3 py-2 text-xs"
+                                    style={{ background: "rgba(240,91,91,0.1)", border: "1px solid rgba(240,91,91,0.25)", color: "#f87171" }}
+                                >
+                                    {deleteError}
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-end gap-2 mt-1">
+                                <button
+                                    onClick={() => setDocToDelete(null)}
+                                    disabled={deleting}
+                                    className="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white transition-colors disabled:opacity-50"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleConfirmDelete}
+                                    disabled={deleting}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60"
+                                    style={{ background: "#f87171" }}
+                                >
+                                    {deleting && <Loader2 size={14} className="animate-spin" />}
+                                    {deleting ? "Excluindo..." : "Excluir"}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
