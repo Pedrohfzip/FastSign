@@ -182,11 +182,17 @@ export default function DocumentDetail() {
                                             className="rounded-xl px-4 py-3 text-sm text-gray-300"
                                             style={{ background: "rgba(91,106,240,0.06)", border: `1px solid ${BORDER_SOFT}` }}
                                         >
-                                            <p className="text-xs flex items-center gap-1.5 mb-1.5" style={{ color: ACCENT }}>
+                                            <p className="text-xs flex items-center gap-1.5 mb-2" style={{ color: ACCENT }}>
                                                 <Sparkles size={11} />
                                                 Resumo gerado por IA
                                             </p>
-                                            {summary}
+                                            <div className="flex flex-col gap-1.5">
+                                                {summary.split('\n').filter(line => line.trim()).map((line, i) => (
+                                                    <p key={i} className="leading-relaxed">
+                                                        {line.trim()}
+                                                    </p>
+                                                ))}
+                                            </div>
                                         </motion.div>
                                     ) : (
                                         <motion.div

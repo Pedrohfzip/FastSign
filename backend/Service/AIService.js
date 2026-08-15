@@ -34,16 +34,19 @@ export async function summarizeText(text) {
 
     const truncated = text.slice(0, MAX_TEXT_LENGTH);
 
-    const prompt = `Você é um assistente que resume documentos em português do Brasil.
-Leia o texto abaixo e escreva um resumo objetivo de 20 a 30 frases, capturando do que se trata o documento.
-Não invente informações que não estejam no texto. Responda APENAS com o resumo, sem introduções como "Este documento trata de".
+    const prompt = `Você é um assistente que resume documentos jurídicos e contratuais em português do Brasil.
+
+Leia o texto abaixo e escreva um resumo estruturado, com aproximadamente 10 a 15 linhas curtas, organizado em tópicos.
+Para cada cláusula ou seção relevante do documento, escreva 1 a 2 linhas resumindo o ponto principal.
+Use marcadores (traço "-") no início de cada linha. Explique oque cada linha esta resumindo, mas não invente informações que não estejam no texto.
+Não invente informações que não estejam no texto. Não escreva introduções nem conclusões, apenas os tópicos.
 
 TEXTO:
 """
 ${truncated}
 """
 
-RESUMO:`;
+RESUMO EM TÓPICOS:`;
 
     try {
         const response = await fetch(`${OLLAMA_URL}/api/generate`, {
@@ -55,7 +58,11 @@ RESUMO:`;
                 stream: false,
                 options: {
                     temperature: 0.3,
+                    num_predict: 900,   // ⬅️ espaço suficiente pra ~30 linhas de texto
+                    num_ctx: 4096,
+                    num_thread: 8,
                 },
+                keep_alive: "10m",
             }),
         });
 
