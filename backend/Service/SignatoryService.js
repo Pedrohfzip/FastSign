@@ -3,7 +3,7 @@ import db from '../database/models/index.js';
 import storageService from './StorageService.js';
 import { generateToken } from '../utils/generateToken.js';
 import { sendSignatureInvite } from './EmailService.js';
-import { stampSignatureImage } from './PdfStampService.js';
+import { stampSignatureImage, getPdfPageCount, stripTrailingPages, appendSignatureCertificate } from './PdfStampService.js';
 const { Document, DocumentVersion, Signatory, Signature, User, sequelize } = db;
 
 export async function addSignatoriesToDocument(documentId, signatoriesData, requestingUserId) {
@@ -199,23 +199,78 @@ export async function signDocument(accessToken, { signatureImage, signatureType,
             const preStampBuffer = await storageService.readVersionFile(currentVersion.filePath);
             const documentHash = crypto.createHash('sha256').update(preStampBuffer).digest('hex');
             const preStampVersionId = currentVersion.id;
+            const signedAt = new Date();
 
-            const { buffer: stampedBuffer, pageCount } = await stampSignatureImage(preStampBuffer, {
+            // O certificado de assinaturas (ver appendSignatureCertificate) é regenerado do
+            // zero a cada assinatura, pra sempre listar TODOS os signatários confirmados até
+            // aqui. Por isso, antes de carimbar, separamos as páginas de conteúdo real
+            // (documento original + carimbos) das páginas de certificado que uma assinatura
+            // anterior possa ter anexado — senão cada assinatura empilharia mais um
+            // certificado no final do arquivo em vez de substituir o anterior.
+            const contentPageCount = document.contentPageCount ?? (await getPdfPageCount(preStampBuffer));
+            const contentBuffer = document.contentPageCount
+                ? await stripTrailingPages(preStampBuffer, document.contentPageCount)
+                : preStampBuffer;
+
+            const { buffer: stampedContentBuffer } = await stampSignatureImage(contentBuffer, {
                 imageDataUrl: signatureImage,
                 position,
             });
 
+            // Assinaturas já confirmadas por outros signatários + a que está sendo criada
+            // agora, pra montar o certificado com a lista completa até este momento.
+            const priorSignatures = await Signature.findAll({
+                include: [{
+                    model: Signatory,
+                    as: 'signatory',
+                    attributes: ['id', 'name', 'email'],
+                    where: { documentId: document.id },
+                }],
+                transaction: t,
+                order: [['signedAt', 'ASC']],
+            });
+
+            const allSignatoriesCount = await Signatory.count({ where: { documentId: document.id }, transaction: t });
+
+            const certificateEntries = [
+                ...priorSignatures.map((sig) => ({
+                    name: sig.signatory.name,
+                    email: sig.signatory.email,
+                    signedAt: sig.signedAt,
+                    documentHash: sig.documentHash,
+                    ipAddress: sig.ipAddress,
+                    signatureType: sig.signatureType,
+                    signatureImage: sig.signatureImage,
+                })),
+                {
+                    name: freshSignatory.name,
+                    email: freshSignatory.email,
+                    signedAt,
+                    documentHash,
+                    ipAddress: requestMeta.ip,
+                    signatureType: signatureType || 'TYPED',
+                    signatureImage,
+                },
+            ];
+
+            const { buffer: finalBuffer, pageCount: finalPageCount } = await appendSignatureCertificate(stampedContentBuffer, {
+                documentTitle: document.title,
+                documentId: document.id,
+                entries: certificateEntries,
+                totalSignatories: allSignatoriesCount,
+            });
+
             const newVersionNumber = currentVersion.versionNumber + 1;
-            savedFile = await storageService.saveVersionFile(document.id, newVersionNumber, stampedBuffer, 'application/pdf');
+            savedFile = await storageService.saveVersionFile(document.id, newVersionNumber, finalBuffer, 'application/pdf');
 
             const newVersion = await DocumentVersion.create({
                 documentId: document.id,
                 versionNumber: newVersionNumber,
                 filePath: savedFile.filePath,
-                fileSize: stampedBuffer.length,
+                fileSize: finalBuffer.length,
                 checksum: savedFile.checksum,
                 uploadedBy: document.userId,
-                pageCount,
+                pageCount: finalPageCount,
             }, { transaction: t });
 
             // Aponta pra versão PRÉ-carimbo (não a nova) — mantém consistência com o
@@ -230,13 +285,17 @@ export async function signDocument(accessToken, { signatureImage, signatureType,
                 documentHash,
                 ipAddress: requestMeta.ip,
                 userAgent: requestMeta.userAgent,
+                signedAt,
             }, { transaction: t });
 
+            if (!document.contentPageCount) {
+                document.contentPageCount = contentPageCount;
+            }
             document.currentVersionId = newVersion.id;
             await document.save({ transaction: t });
 
             freshSignatory.status = 'SIGNED';
-            freshSignatory.signedAt = new Date();
+            freshSignatory.signedAt = signedAt;
             await freshSignatory.save({ transaction: t });
 
             // verifica se todos os signatários já assinaram

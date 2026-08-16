@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import { FileText, ArrowLeft, Loader2, CheckCircle2, Clock, Mail, Sparkles, User } from "lucide-react";
-import { getDocumentDetail, getDocumentResume } from "../api/fileRoute";
+import { FileText, ArrowLeft, Loader2, CheckCircle2, Clock, Mail, Sparkles, User, Download } from "lucide-react";
+import { getDocumentDetail, getDocumentResume, downloadDocumentFile } from "../api/fileRoute";
 
 const ACCENT = "#5b6af0";
 const ACCENT_SOFT = "rgba(91,106,240,0.12)";
@@ -28,6 +28,9 @@ export default function DocumentDetail() {
     const [summaryError, setSummaryError] = useState(null);
     const [summary, setSummary] = useState(null);
     const summaryAbortRef = useRef(null);
+
+    const [downloading, setDownloading] = useState(false);
+    const [downloadError, setDownloadError] = useState(null);
 
     // Cancela um resumo em andamento se o usuário sair da página antes dele terminar.
     useEffect(() => () => summaryAbortRef.current?.abort(), []);
@@ -73,6 +76,28 @@ export default function DocumentDetail() {
             if (!controller.signal.aborted) setSummaryLoading(false);
         }
     }
+
+    const handleDownload = async () => {
+        setDownloading(true);
+        setDownloadError(null);
+        try {
+            const blob = await downloadDocumentFile(id);
+            const url = URL.createObjectURL(blob);
+            // `document` aqui dentro do componente é o STATE (dados do documento), não o
+            // DOM global — por isso `window.document` explícito pra criar o link de download.
+            const link = window.document.createElement("a");
+            link.href = url;
+            link.download = `${document.title || "documento"}.pdf`;
+            window.document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            setDownloadError(err?.response?.data?.error || "Erro ao baixar documento.");
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     return (
         <div
@@ -172,6 +197,27 @@ export default function DocumentDetail() {
                                         </div>
                                     </div>
                                 </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleDownload}
+                                    disabled={downloading}
+                                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-60"
+                                    style={{
+                                        background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)`,
+                                        boxShadow: "0 8px 24px rgba(91, 106, 240, 0.3)",
+                                    }}
+                                >
+                                    {downloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                                    {downloading
+                                        ? "Baixando..."
+                                        : document.status === "COMPLETED"
+                                            ? "Baixar documento assinado"
+                                            : "Baixar documento"}
+                                </button>
+                                {downloadError && (
+                                    <p className="text-xs -mt-2" style={{ color: "#f87171" }}>{downloadError}</p>
+                                )}
 
                                 <div style={{ borderTop: `1px solid ${BORDER_SOFT}` }} />
 

@@ -220,7 +220,7 @@ export default function AddSignatories() {
                 }}
             />
 
-            <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-10 overflow-y-auto scrollbar-hidden">
+            <main className="relative z-10 flex-1 flex items-start justify-center px-6 py-10 overflow-y-auto scrollbar-hidden">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}

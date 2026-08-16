@@ -78,6 +78,15 @@ export default (sequelize, DataTypes) => {
                 allowNull: true,
                 field: 'suggested_y',
             },
+            contentPageCount: {
+                // Páginas do documento "real" (original + carimbos), sem contar a(s)
+                // página(s) de certificado de assinatura anexadas ao final — ver
+                // PdfStampService.appendSignatureCertificate. Fica null até a primeira
+                // assinatura, quando é fixado pra sempre.
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                field: 'content_page_count',
+            },
         },
         {
             sequelize,

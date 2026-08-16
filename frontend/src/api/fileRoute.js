@@ -29,6 +29,14 @@ export const getDocument = async (documentId) => {
     return response.data;
 };
 
+// responseType 'blob' — é um PDF binário, não JSON. Usado pelo botão de download em
+// DocumentDetail.jsx (o arquivo já vem com as páginas de certificado de assinatura,
+// se houver alguma, já que é sempre a currentVersion do documento).
+export const downloadDocumentFile = async (documentId) => {
+    const response = await api.get(`/documents/${documentId}/file`, { responseType: 'blob' });
+    return response.data;
+};
+
 export const addSignatories = async (documentId, signatories) => {
     const response = await api.post(`/documents/${documentId}/signatories`, { signatories });
     return response.data;

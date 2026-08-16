@@ -142,74 +142,77 @@ export default function MyDocuments() {
                     </div>
 
                     {/* Abas */}
-                    <div
-                        className="flex gap-1 p-1 rounded-xl w-fit"
-                        style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
-                    >
-                        <button
-                            onClick={() => setActiveTab(TABS.MINE)}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors relative"
-                            style={{
-                                color: activeTab === TABS.MINE ? "#fff" : "#8b8b9a",
-                            }}
+                    <div className="-mx-6 px-6 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hidden">
+                        <div
+                            className="flex gap-1 p-1 rounded-xl w-fit"
+                            style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
                         >
-                            {activeTab === TABS.MINE && (
-                                <motion.div
-                                    layoutId="activeTab"
-                                    className="absolute inset-0 rounded-lg"
-                                    style={{ background: ACCENT }}
-                                    transition={{ duration: 0.2 }}
-                                />
-                            )}
-                            <span className="relative z-10">Meus documentos</span>
-                        </button>
+                            <button
+                                onClick={() => setActiveTab(TABS.MINE)}
+                                className="px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors relative whitespace-nowrap shrink-0"
+                                style={{
+                                    color: activeTab === TABS.MINE ? "#fff" : "#8b8b9a",
+                                }}
+                            >
+                                {activeTab === TABS.MINE && (
+                                    <motion.div
+                                        layoutId="activeTab"
+                                        className="absolute inset-0 rounded-lg"
+                                        style={{ background: ACCENT }}
+                                        transition={{ duration: 0.2 }}
+                                    />
+                                )}
+                                <span className="relative z-10">Meus documentos</span>
+                            </button>
 
-                        <button
-                            onClick={() => setActiveTab(TABS.TO_SIGN)}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors relative flex items-center gap-1.5"
-                            style={{
-                                color: activeTab === TABS.TO_SIGN ? "#fff" : "#8b8b9a",
-                            }}
-                        >
-                            {activeTab === TABS.TO_SIGN && (
-                                <motion.div
-                                    layoutId="activeTab"
-                                    className="absolute inset-0 rounded-lg"
-                                    style={{ background: ACCENT }}
-                                    transition={{ duration: 0.2 }}
-                                />
-                            )}
-                            <span className="relative z-10">Documentos para assinar</span>
-                            {pendingToSignCount > 0 && (
-                                <span
-                                    className="relative z-10 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
-                                    style={{
-                                        background: activeTab === TABS.TO_SIGN ? "rgba(255,255,255,0.25)" : "#f87171",
-                                        color: "#fff",
-                                    }}
-                                >
-                                    {pendingToSignCount}
-                                </span>
-                            )}
-                        </button>
+                            <button
+                                onClick={() => setActiveTab(TABS.TO_SIGN)}
+                                className="px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors relative flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                                style={{
+                                    color: activeTab === TABS.TO_SIGN ? "#fff" : "#8b8b9a",
+                                }}
+                            >
+                                {activeTab === TABS.TO_SIGN && (
+                                    <motion.div
+                                        layoutId="activeTab"
+                                        className="absolute inset-0 rounded-lg"
+                                        style={{ background: ACCENT }}
+                                        transition={{ duration: 0.2 }}
+                                    />
+                                )}
+                                <span className="relative z-10 sm:hidden">Para assinar</span>
+                                <span className="relative z-10 hidden sm:inline">Documentos para assinar</span>
+                                {pendingToSignCount > 0 && (
+                                    <span
+                                        className="relative z-10 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+                                        style={{
+                                            background: activeTab === TABS.TO_SIGN ? "rgba(255,255,255,0.25)" : "#f87171",
+                                            color: "#fff",
+                                        }}
+                                    >
+                                        {pendingToSignCount}
+                                    </span>
+                                )}
+                            </button>
 
-                        <button
-                            onClick={() => setActiveTab(TABS.COMPLETED)}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors relative"
-                            style={{
-                                color: activeTab === TABS.COMPLETED ? "#fff" : "#8b8b9a",
-                            }}
-                        >
-                            {activeTab === TABS.COMPLETED && (
-                                <motion.div
-                                    layoutId="activeTab"
-                                    className="absolute inset-0 rounded-lg"
-                                    style={{ background: ACCENT }}
-                                    transition={{ duration: 0.2 }}
-                                />
-                            )}
-                            <span className="relative z-10">Finalizados</span>
-                        </button>
+                            <button
+                                onClick={() => setActiveTab(TABS.COMPLETED)}
+                                className="px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors relative whitespace-nowrap shrink-0"
+                                style={{
+                                    color: activeTab === TABS.COMPLETED ? "#fff" : "#8b8b9a",
+                                }}
+                            >
+                                {activeTab === TABS.COMPLETED && (
+                                    <motion.div
+                                        layoutId="activeTab"
+                                        className="absolute inset-0 rounded-lg"
+                                        style={{ background: ACCENT }}
+                                        transition={{ duration: 0.2 }}
+                                    />
+                                )}
+                                <span className="relative z-10">Finalizados</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Campo de busca */}
@@ -279,55 +282,59 @@ export default function MyDocuments() {
                                                         layout
                                                         whileHover={{ scale: 1.005 }}
                                                         onClick={() => navigate(`/documents/${doc.id}`)}
-                                                        className="flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-colors"
+                                                        className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-colors"
                                                         style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
                                                     >
-                                                        <div
-                                                            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                                                            style={{ background: "rgba(91,106,240,0.12)" }}
-                                                        >
-                                                            <FileText size={16} style={{ color: ACCENT }} />
-                                                        </div>
+                                                        <div className="flex items-center gap-3 min-w-0 sm:flex-1">
+                                                            <div
+                                                                className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                                                style={{ background: "rgba(91,106,240,0.12)" }}
+                                                            >
+                                                                <FileText size={16} style={{ color: ACCENT }} />
+                                                            </div>
 
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-medium text-white truncate">{doc.title}</p>
-                                                            <div className="flex items-center gap-3 mt-1">
-                                                                <span className="text-xs text-gray-500">{formatDate(doc.createdAt)}</span>
-                                                                {doc.totalSignatories > 0 && (
-                                                                    <span className="flex items-center gap-1 text-xs text-gray-400">
-                                                                        {allSigned ? (
-                                                                            <CheckCircle2 size={12} style={{ color: "#4ade80" }} />
-                                                                        ) : (
-                                                                            <Users size={12} />
-                                                                        )}
-                                                                        {doc.signedCount}/{doc.totalSignatories} assinaram
-                                                                    </span>
-                                                                )}
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-white truncate">{doc.title}</p>
+                                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                                                                    <span className="text-xs text-gray-500">{formatDate(doc.createdAt)}</span>
+                                                                    {doc.totalSignatories > 0 && (
+                                                                        <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                                            {allSigned ? (
+                                                                                <CheckCircle2 size={12} style={{ color: "#4ade80" }} />
+                                                                            ) : (
+                                                                                <Users size={12} />
+                                                                            )}
+                                                                            {doc.signedCount}/{doc.totalSignatories} assinaram
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
 
-                                                        <span
-                                                            className="text-xs font-medium px-2.5 py-1 rounded-full shrink-0"
-                                                            style={{
-                                                                color: statusInfo.color,
-                                                                background: `${statusInfo.color}1a`,
-                                                                border: `1px solid ${statusInfo.color}4d`,
-                                                            }}
-                                                        >
-                                                            {statusInfo.label}
-                                                        </span>
+                                                        <div className="flex items-center justify-between sm:justify-end gap-2 pl-12 sm:pl-0 shrink-0">
+                                                            <span
+                                                                className="text-xs font-medium px-2.5 py-1 rounded-full shrink-0"
+                                                                style={{
+                                                                    color: statusInfo.color,
+                                                                    background: `${statusInfo.color}1a`,
+                                                                    border: `1px solid ${statusInfo.color}4d`,
+                                                                }}
+                                                            >
+                                                                {statusInfo.label}
+                                                            </span>
 
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setDeleteError(null);
-                                                                setDocToDelete(doc);
-                                                            }}
-                                                            title="Excluir documento"
-                                                            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors"
-                                                        >
-                                                            <Trash2 size={15} />
-                                                        </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setDeleteError(null);
+                                                                    setDocToDelete(doc);
+                                                                }}
+                                                                title="Excluir documento"
+                                                                className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors"
+                                                            >
+                                                                <Trash2 size={15} />
+                                                            </button>
+                                                        </div>
                                                     </motion.li>
                                                 );
                                             })}
@@ -361,37 +368,39 @@ export default function MyDocuments() {
                                                         layout
                                                         whileHover={{ scale: 1.005 }}
                                                         onClick={() => navigate(`/documents/to-sign/${item.accessToken}`)}
-                                                        className="flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-colors"
+                                                        className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-colors"
                                                         style={{
                                                             background: isSigned ? "rgba(255,255,255,0.03)" : "rgba(91,106,240,0.06)",
                                                             border: isSigned ? `1px solid ${BORDER_SOFT}` : "1px solid rgba(91,106,240,0.3)",
                                                         }}
                                                     >
-                                                        <div
-                                                            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                                                            style={{
-                                                                background: isSigned ? "rgba(74,222,128,0.12)" : "rgba(91,106,240,0.15)",
-                                                            }}
-                                                        >
-                                                            {isSigned ? (
-                                                                <CheckCircle2 size={16} style={{ color: "#4ade80" }} />
-                                                            ) : (
-                                                                <PenLine size={16} style={{ color: ACCENT }} />
-                                                            )}
-                                                        </div>
+                                                        <div className="flex items-center gap-3 min-w-0 sm:flex-1">
+                                                            <div
+                                                                className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                                                style={{
+                                                                    background: isSigned ? "rgba(74,222,128,0.12)" : "rgba(91,106,240,0.15)",
+                                                                }}
+                                                            >
+                                                                {isSigned ? (
+                                                                    <CheckCircle2 size={16} style={{ color: "#4ade80" }} />
+                                                                ) : (
+                                                                    <PenLine size={16} style={{ color: ACCENT }} />
+                                                                )}
+                                                            </div>
 
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-medium text-white truncate">{item.document.title}</p>
-                                                            <div className="flex items-center gap-3 mt-1">
-                                                                <span className="text-xs text-gray-500">{formatDate(item.document.createdAt)}</span>
-                                                                <span className="text-xs text-gray-400">
-                                                                    Enviado por {item.document.ownerName}
-                                                                </span>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-white truncate">{item.document.title}</p>
+                                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                                                                    <span className="text-xs text-gray-500">{formatDate(item.document.createdAt)}</span>
+                                                                    <span className="text-xs text-gray-400 truncate">
+                                                                        Enviado por {item.document.ownerName}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
 
                                                         <span
-                                                            className="text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1"
+                                                            className="ml-12 sm:ml-0 self-start sm:self-auto text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1"
                                                             style={{
                                                                 color: isSigned ? "#4ade80" : "#facc15",
                                                                 background: isSigned ? "rgba(74,222,128,0.1)" : "rgba(250,204,21,0.1)",
@@ -440,37 +449,39 @@ export default function MyDocuments() {
                                                     layout
                                                     whileHover={{ scale: 1.005 }}
                                                     onClick={() => navigate(`/documents/${item.id}`)}
-                                                    className="flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-colors"
+                                                    className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-colors"
                                                     style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
                                                 >
-                                                    <div
-                                                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                                                        style={{ background: "rgba(91,106,240,0.12)" }}
-                                                    >
-                                                        <FileText size={16} style={{ color: ACCENT }} />
-                                                    </div>
+                                                    <div className="flex items-center gap-3 min-w-0 sm:flex-1">
+                                                        <div
+                                                            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                                            style={{ background: "rgba(91,106,240,0.12)" }}
+                                                        >
+                                                            <FileText size={16} style={{ color: ACCENT }} />
+                                                        </div>
 
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium text-white truncate">{item.title}</p>
-                                                        <div className="flex items-center gap-3 mt-1">
-                                                            <span className="text-xs text-gray-500">{formatDate(item.createdAt)}</span>
-                                                            {item.role === 'signatory' ? (
-                                                                <span className="text-xs text-gray-400">
-                                                                    Enviado por {item.ownerName}
-                                                                </span>
-                                                            ) : (
-                                                                item.totalSignatories > 0 && (
-                                                                    <span className="flex items-center gap-1 text-xs text-gray-400">
-                                                                        <CheckCircle2 size={12} style={{ color: "#4ade80" }} />
-                                                                        {item.signedCount}/{item.totalSignatories} assinaram
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium text-white truncate">{item.title}</p>
+                                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                                                                <span className="text-xs text-gray-500">{formatDate(item.createdAt)}</span>
+                                                                {item.role === 'signatory' ? (
+                                                                    <span className="text-xs text-gray-400 truncate">
+                                                                        Enviado por {item.ownerName}
                                                                     </span>
-                                                                )
-                                                            )}
+                                                                ) : (
+                                                                    item.totalSignatories > 0 && (
+                                                                        <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                                            <CheckCircle2 size={12} style={{ color: "#4ade80" }} />
+                                                                            {item.signedCount}/{item.totalSignatories} assinaram
+                                                                        </span>
+                                                                    )
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
 
                                                     <span
-                                                        className="text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1"
+                                                        className="ml-12 sm:ml-0 self-start sm:self-auto text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1"
                                                         style={{
                                                             color: "#4ade80",
                                                             background: "rgba(74,222,128,0.1)",
