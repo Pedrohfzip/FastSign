@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, ArrowLeft, Loader2, Users, CheckCircle2, Search, X, PenLine, Clock, Trash2, AlertTriangle } from "lucide-react";
-import { getDocuments, getDocumentsToSign, deleteDocument } from "../api/fileRoute";
+import { getDocuments, getDocumentsToSign, getCompletedDocuments, deleteDocument } from "../api/fileRoute";
 
 const ACCENT = "#5b6af0";
 const BORDER_SOFT = "rgba(255,255,255,0.07)";
@@ -18,6 +18,7 @@ const STATUS_LABELS = {
 const TABS = {
     MINE: 'mine',
     TO_SIGN: 'to-sign',
+    COMPLETED: 'completed',
 };
 
 export default function MyDocuments() {
@@ -27,6 +28,7 @@ export default function MyDocuments() {
 
     const [documents, setDocuments] = useState([]);
     const [toSignDocuments, setToSignDocuments] = useState([]);
+    const [completedDocuments, setCompletedDocuments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState("");
@@ -40,13 +42,15 @@ export default function MyDocuments() {
 
         async function load() {
             try {
-                const [mine, toSign] = await Promise.all([
+                const [mine, toSign, completed] = await Promise.all([
                     getDocuments(),
                     getDocumentsToSign(),
+                    getCompletedDocuments(),
                 ]);
                 if (!cancelled) {
                     setDocuments(mine);
                     setToSignDocuments(toSign);
+                    setCompletedDocuments(completed);
                 }
             } catch (err) {
                 if (!cancelled) setError(err?.response?.data?.error || "Erro ao carregar documentos.");
@@ -78,6 +82,16 @@ export default function MyDocuments() {
             return titleMatch || ownerMatch;
         });
     }, [toSignDocuments, search]);
+
+    const filteredCompleted = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        if (!term) return completedDocuments;
+        return completedDocuments.filter((item) => {
+            const titleMatch = item.title?.toLowerCase().includes(term);
+            const ownerMatch = item.ownerName?.toLowerCase().includes(term);
+            return titleMatch || ownerMatch;
+        });
+    }, [completedDocuments, search]);
 
     const pendingToSignCount = toSignDocuments.filter((item) => item.signatoryStatus === 'PENDING').length;
 
@@ -178,10 +192,28 @@ export default function MyDocuments() {
                                 </span>
                             )}
                         </button>
+
+                        <button
+                            onClick={() => setActiveTab(TABS.COMPLETED)}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors relative"
+                            style={{
+                                color: activeTab === TABS.COMPLETED ? "#fff" : "#8b8b9a",
+                            }}
+                        >
+                            {activeTab === TABS.COMPLETED && (
+                                <motion.div
+                                    layoutId="activeTab"
+                                    className="absolute inset-0 rounded-lg"
+                                    style={{ background: ACCENT }}
+                                    transition={{ duration: 0.2 }}
+                                />
+                            )}
+                            <span className="relative z-10">Finalizados</span>
+                        </button>
                     </div>
 
                     {/* Campo de busca */}
-                    {!loading && !error && (documents.length > 0 || toSignDocuments.length > 0) && (
+                    {!loading && !error && (documents.length > 0 || toSignDocuments.length > 0 || completedDocuments.length > 0) && (
                         <div
                             className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
                             style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
@@ -302,7 +334,7 @@ export default function MyDocuments() {
                                         </ul>
                                     )}
                                 </motion.div>
-                            ) : (
+                            ) : activeTab === TABS.TO_SIGN ? (
                                 <motion.div key="to-sign" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                                     {toSignDocuments.length === 0 ? (
                                         <div
@@ -381,6 +413,75 @@ export default function MyDocuments() {
                                                     </motion.li>
                                                 );
                                             })}
+                                        </ul>
+                                    )}
+                                </motion.div>
+                            ) : (
+                                <motion.div key="completed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                                    {completedDocuments.length === 0 ? (
+                                        <div
+                                            className="rounded-xl px-6 py-10 text-center text-sm text-gray-400"
+                                            style={{ background: "rgba(255,255,255,0.02)", border: `1px dashed ${BORDER_SOFT}` }}
+                                        >
+                                            Nenhum documento finalizado ainda.
+                                        </div>
+                                    ) : filteredCompleted.length === 0 ? (
+                                        <div
+                                            className="rounded-xl px-6 py-10 text-center text-sm text-gray-400"
+                                            style={{ background: "rgba(255,255,255,0.02)", border: `1px dashed ${BORDER_SOFT}` }}
+                                        >
+                                            Nenhum documento encontrado para "{search}".
+                                        </div>
+                                    ) : (
+                                        <ul className="flex flex-col gap-2.5">
+                                            {filteredCompleted.map((item) => (
+                                                <motion.li
+                                                    key={item.id}
+                                                    layout
+                                                    whileHover={{ scale: 1.005 }}
+                                                    onClick={() => navigate(`/documents/${item.id}`)}
+                                                    className="flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-colors"
+                                                    style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                                                >
+                                                    <div
+                                                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                                        style={{ background: "rgba(91,106,240,0.12)" }}
+                                                    >
+                                                        <FileText size={16} style={{ color: ACCENT }} />
+                                                    </div>
+
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-white truncate">{item.title}</p>
+                                                        <div className="flex items-center gap-3 mt-1">
+                                                            <span className="text-xs text-gray-500">{formatDate(item.createdAt)}</span>
+                                                            {item.role === 'signatory' ? (
+                                                                <span className="text-xs text-gray-400">
+                                                                    Enviado por {item.ownerName}
+                                                                </span>
+                                                            ) : (
+                                                                item.totalSignatories > 0 && (
+                                                                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                                                                        <CheckCircle2 size={12} style={{ color: "#4ade80" }} />
+                                                                        {item.signedCount}/{item.totalSignatories} assinaram
+                                                                    </span>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <span
+                                                        className="text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1"
+                                                        style={{
+                                                            color: "#4ade80",
+                                                            background: "rgba(74,222,128,0.1)",
+                                                            border: "1px solid rgba(74,222,128,0.3)",
+                                                        }}
+                                                    >
+                                                        <CheckCircle2 size={11} />
+                                                        Concluído
+                                                    </span>
+                                                </motion.li>
+                                            ))}
                                         </ul>
                                     )}
                                 </motion.div>

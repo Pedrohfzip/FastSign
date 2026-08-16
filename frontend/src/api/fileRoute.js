@@ -54,6 +54,11 @@ export const getDocumentsToSign = async () => {
     return response.data;
 };
 
+export const getCompletedDocuments = async () => {
+    const response = await api.get('/documents/completed');
+    return response.data;
+};
+
 export const deleteDocument = async (documentId) => {
     const response = await api.delete(`/documents/${documentId}`);
     return response.data;

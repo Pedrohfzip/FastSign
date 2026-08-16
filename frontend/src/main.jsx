@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext'
 import AppRoutes from './routes'
 import Header from './components/Header'
 import './index.css'
+import '@fontsource/dancing-script/700.css' // fonte cursiva usada pra gerar a imagem de assinatura
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

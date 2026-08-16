@@ -6,9 +6,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Upload, FileText, X, CheckCircle2, AlertCircle, PenLine, Loader2, Plus } from "lucide-react";
 import { uploadDocument } from "../api/fileRoute";
 import { useNavigate } from 'react-router'
+import PdfViewer from "../components/PdfViewer";
 
 
-// Só PDF, igual ao input original (o backend/iframe só sabe exibir PDF)
+// Só PDF, igual ao input original (o backend só sabe processar PDF)
 const ACCEPTED = [".pdf"];
 
 // Estados possíveis de cada arquivo na fila de upload
@@ -344,15 +345,12 @@ export default function UploadScreen({ onContinue }) {
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -12 }}
                                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                                className="flex flex-col rounded-2xl overflow-hidden shrink-0"
+                                className="flex flex-col rounded-2xl overflow-hidden shrink-0 p-3"
                                 style={{ background: "#14141f", border: "1px solid rgba(255,255,255,0.08)" }}
                             >
-                                <iframe
-                                    src={previewUrl}
-                                    title={selectedItem.file.name}
-                                    className="w-full block"
-                                    style={{ background: "#fff", height: "80vh", border: "none" }}
-                                />
+                                {/* Só visualização — sem clique pra posicionar nem overlay de assinatura,
+                                    já que aqui não passamos onCanvasClick nem children pro PdfViewer. */}
+                                <PdfViewer pdfUrl={previewUrl} />
                             </motion.div>
                         )}
                     </AnimatePresence>

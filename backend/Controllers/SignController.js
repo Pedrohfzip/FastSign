@@ -53,14 +53,14 @@ const SignController = {
     async sign(req, res) {
         try {
             const { accessToken } = req.params;
-            const { signatureImage, signatureType } = req.body;
+            const { signatureImage, signatureType, position } = req.body;
 
             const requestMeta = {
                 ip: req.ip,
                 userAgent: req.headers['user-agent'],
             };
 
-            const signatory = await signDocument(accessToken, { signatureImage, signatureType }, requestMeta);
+            const signatory = await signDocument(accessToken, { signatureImage, signatureType, position }, requestMeta);
 
             return res.json({
                 message: 'Documento assinado com sucesso.',

@@ -10,9 +10,11 @@ export const getSignatureFile = async (accessToken) => {
     return response.data;
 };
 
-export const confirmSignature = async (accessToken) => {
+export const confirmSignature = async (accessToken, { signatureImage, position }) => {
     const response = await api.post(`/sign/${accessToken}`, {
-        signatureType: 'TYPED', // sem captura visual por enquanto — só confirmação
+        signatureType: 'TYPED',
+        signatureImage,
+        position,
     });
     return response.data;
 };

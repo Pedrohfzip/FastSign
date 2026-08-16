@@ -1,7 +1,13 @@
 import axios from 'axios';
 
+// Usa o mesmo host que serviu a página (window.location.hostname) em vez de um
+// 'localhost' fixo — assim funciona tanto acessando do próprio PC quanto de outro
+// dispositivo na rede local (ex: celular acessando http://192.168.x.x:5173), sem
+// precisar trocar nada manualmente. A porta do backend continua fixa em 3001.
+const baseURL = `http://${window.location.hostname}:3001/api`;
+
 const api = axios.create({
-    baseURL: 'http://localhost:3001/api',
+    baseURL,
     headers: {
         'Content-Type': 'application/json',
     },

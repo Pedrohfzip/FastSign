@@ -3,6 +3,7 @@ import {
     createDocument,
     getDocumentFile,
     listDocuments,
+    listCompletedDocuments,
     getDocumentById,
     generateDocumentSummary,
     getDocumentResume,
@@ -13,6 +14,7 @@ import {
     addSignatoriesToDocument,
     listSignatoriesForDocument,
     listPendingSignaturesForUser,
+    listCompletedSignaturesForUser,
 } from '../Service/SignatoryService.js';
 
 const DocController = {
@@ -69,7 +71,7 @@ const DocController = {
 
     async list(req, res) {
         try {
-            const documents = await listDocuments(req.userId); // ⬅️ passa o userId
+            const documents = await listDocuments(req.userId, false); // ⬅️ passa o userId, sem completados
             return res.json(documents);
         } catch (err) {
             return res.status(500).json({ error: 'Erro ao buscar documentos.' });
@@ -177,12 +179,61 @@ const DocController = {
 
     async listToSign(req, res) {
         try {
-            const documents = await listPendingSignaturesForUser(req.userId);
+            const documents = await listPendingSignaturesForUser(req.userId, false);
             return res.json(documents);
         } catch (err) {
             console.error('[DocController.listToSign]', err);
             return res.status(err.statusCode || 500).json({
                 error: err.message || 'Erro ao buscar documentos pendentes de assinatura.',
+            });
+        }
+    },
+
+    async listCompleted(req, res) {
+        try {
+            const [ownedDocs, signedDocs] = await Promise.all([
+                listCompletedDocuments(req.userId),
+                listCompletedSignaturesForUser(req.userId),
+            ]);
+
+            const ownerItems = ownedDocs.map((doc) => ({
+                id: doc.id,
+                title: doc.title,
+                status: doc.status,
+                createdAt: doc.createdAt,
+                totalSignatories: doc.totalSignatories,
+                signedCount: doc.signedCount,
+                role: 'owner',
+            }));
+
+            const signatoryItems = signedDocs.map((item) => ({
+                id: item.document.id,
+                title: item.document.title,
+                status: item.document.status,
+                createdAt: item.document.createdAt,
+                ownerName: item.document.ownerName,
+                role: 'signatory',
+            }));
+
+            // Remove duplicatas por id — um documento pode aparecer nas duas listas
+            // se o usuário for dono E signatário do mesmo documento. Nesse caso,
+            // prioriza a versão 'owner' (processada por último, sempre sobrescreve).
+            const byId = new Map();
+            for (const item of [...signatoryItems, ...ownerItems]) {
+                const existing = byId.get(item.id);
+                if (!existing || item.role === 'owner') {
+                    byId.set(item.id, item);
+                }
+            }
+
+            const combined = Array.from(byId.values())
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+            return res.json(combined);
+        } catch (err) {
+            console.error('[DocController.listCompleted]', err);
+            return res.status(err.statusCode || 500).json({
+                error: err.message || 'Erro ao buscar documentos finalizados.',
             });
         }
     },

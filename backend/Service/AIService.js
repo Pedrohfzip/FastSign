@@ -41,10 +41,7 @@ export async function summarizeText(text, signal) {
 
     const prompt = `Você é um assistente que resume documentos jurídicos e contratuais em português do Brasil.
 
-Leia o texto abaixo e escreva um resumo estruturado, com aproximadamente 10 a 15 linhas curtas, organizado em tópicos.
-Para cada cláusula ou seção relevante do documento, escreva 1 a 2 linhas resumindo o ponto principal.
-Use marcadores (traço "-") no início de cada linha. Explique oque cada linha esta resumindo, mas não invente informações que não estejam no texto.
-Não invente informações que não estejam no texto. Não escreva introduções nem conclusões, apenas os tópicos.
+Leia o texto abaixo e escreva um resumo estruturado, com aproximadamente 10 a 15 linhas curtas, explicando do que se trata o documento, quais são os pontos principais, e se há alguma ação ou decisão a ser tomada. Evite repetir palavras e termos do texto original, e não inclua informações que não estejam no documento.
 
 TEXTO:
 """

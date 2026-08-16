@@ -1,4 +1,5 @@
 import path from 'path';
+import { Op } from 'sequelize';
 import db from '../database/models/index.js';
 import storageService from './StorageService.js';
 import { extractTextFromPdf, summarizeText } from './AIService.js';
@@ -77,11 +78,17 @@ export async function getDocumentFile(documentId, userId) {
     return { buffer, originalName: document.originalName };
 }
 
-export async function listDocuments(userId) {
+export async function listDocuments(userId, includeCompleted = false) {
     console.log(userId);
     try {
+        const where = { userId };
+        // Por padrão, documentos já finalizados saem daqui e vão pra aba "Finalizados".
+        if (!includeCompleted) {
+            where.status = { [Op.ne]: 'COMPLETED' };
+        }
+
         const documents = await Document.findAll({
-            where: { userId },
+            where,
             include: [{ model: Signatory, as: 'signatories' }],
             order: [['createdAt', 'DESC']],
         });
@@ -106,6 +113,13 @@ export async function listDocuments(userId) {
         console.error('[DocumentService.listDocuments]', err);
         throw new Error('Erro ao buscar documentos.');
     }
+}
+
+// Documentos finalizados (status COMPLETED) dos quais o usuário é dono — mesmo
+// formato de listDocuments, só reaproveitando a query com o filtro invertido.
+export async function listCompletedDocuments(userId) {
+    const documents = await listDocuments(userId, true);
+    return documents.filter((doc) => doc.status === 'COMPLETED');
 }
 
 export async function getDocumentById(documentId, userId) {

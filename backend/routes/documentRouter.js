@@ -7,6 +7,7 @@ const docRouter = Router();
 docRouter.post('/', requireAuth, handleUpload, DocController.upload);
 docRouter.get('/', requireAuth, DocController.list);
 docRouter.get('/to-sign', requireAuth, DocController.listToSign);
+docRouter.get('/completed', requireAuth, DocController.listCompleted);
 docRouter.get('/:id/file', requireAuth, DocController.getFile);
 docRouter.post('/:id/signatories', requireAuth, DocController.addSignatories);
 docRouter.get('/:id/signatories', requireAuth, DocController.listSignatories);
