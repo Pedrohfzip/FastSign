@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, PenLine, CheckCircle2, Loader2, AlertCircle, ArrowLeft, Check, User } from "lucide-react";
+import { FileText, PenLine, CheckCircle2, Loader2, AlertCircle, ArrowLeft, Check, User, MousePointerClick } from "lucide-react";
 import { getSignatureInfo, getSignatureFile, confirmSignature } from "../api/signRoute";
 import PdfPositionPicker from "../components/PdfPositionPicker";
 import { useSignatureImage } from "../hooks/useSignatureImage";
@@ -181,6 +181,17 @@ export default function SignScreen() {
                                         className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
                                     />
                                 </div>
+                            </div>
+
+                            <div
+                                className="w-full flex items-start gap-2.5 px-3.5 py-3 rounded-xl text-left"
+                                style={{ background: "rgba(91,106,240,0.06)", border: "1px solid rgba(91,106,240,0.2)" }}
+                            >
+                                <MousePointerClick size={16} className="shrink-0 mt-0.5" style={{ color: ACCENT }} />
+                                <p className="text-xs text-gray-300 leading-relaxed">
+                                    Clique no lugar do documento onde você quer colocar sua assinatura. Você pode
+                                    navegar entre as páginas e trocar de lugar quantas vezes quiser antes de confirmar.
+                                </p>
                             </div>
 
                             <div className="w-full">

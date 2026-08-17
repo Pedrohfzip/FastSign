@@ -16,8 +16,10 @@ const pills = [
 export default function App() {
     const navigate = useNavigate();
 
+    // /upload é uma rota protegida (ver ProtectedRoute.jsx) — sem conta, ela manda o
+    // usuário de volta pra essa mesma tela. Por isso o CTA leva pro cadastro primeiro;
+    // depois de criar a conta, o fluxo normal já cai direto em /upload.
     const handleNavigate = () => {
-        // navigate("/upload");
         navigate("/sign-up");
     };
     return (
@@ -174,41 +176,66 @@ export default function App() {
                     >
                         Assine documentos de
                         <br />
-                        <span style={{ color: ACCENT }}>GRAÇA.</span>
+                        <span style={{ color: ACCENT }}>graça.</span>
                     </h1>
                     <p className="text-gray-400 text-base leading-relaxed">
-                        Crie sua conta gratuitamente, envie seu PDF e assine com
-                        validade jurídica
+                        Envie seu PDF, adicione quem precisa assinar e pronto —
+                        assinatura com validade jurídica em minutos.
                     </p>
                 </motion.div>
 
-
+                {/* Pills de confiança — reforça o gancho antes do CTA */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.5 }}
+                    className="flex flex-wrap items-center justify-center gap-2 mt-3 mb-1"
+                >
+                    {pills.map(({ icon: Icon, label }) => (
+                        <span
+                            key={label}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-gray-300"
+                            style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER_SOFT}` }}
+                        >
+                            <Icon size={11} style={{ color: ACCENT }} />
+                            {label}
+                        </span>
+                    ))}
+                </motion.div>
 
                 {/* CTA */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4, duration: 0.5 }}
-                    className="flex flex-col items-center  w-full"
+                    className="flex flex-col items-center  w-full mt-2"
                 >
                     <motion.button
                         whileHover={{ scale: 1.03 }}
                         whileTap={{ scale: 0.97 }}
-
+                        animate={{
+                            boxShadow: [
+                                "0 8px 24px rgba(91,106,240,0.35)",
+                                "0 8px 32px rgba(91,106,240,0.5)",
+                                "0 8px 24px rgba(91,106,240,0.35)",
+                            ],
+                        }}
                         transition={{
-                            boxShadow: { duration: 2, repeat: Infinity, ease: "easeOut" },
+                            boxShadow: { duration: 2.4, repeat: Infinity, ease: "easeInOut" },
                             scale: { duration: 0.15 },
                         }}
                         className="w-full max-w-xs flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-semibold text-white"
                         style={{
-                            background: "linear-gradient(135deg, #282d5900 0%, #7a5dee00 100%)",
+                            background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)`,
                         }}
                         onClick={handleNavigate}
                     >
-                        Crie sua Conta
+                        Enviar meu primeiro documento
                         <ArrowRight size={16} />
                     </motion.button>
-
+                    <p className="text-xs text-gray-500 mt-3">
+                        Leva menos de um minuto para criar sua conta
+                    </p>
                 </motion.div>
 
             </div>

@@ -3,14 +3,16 @@
 // ignorando a restrição de largura do #root (width: 80%) definida no index.css.
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, FileText, X, CheckCircle2, AlertCircle, PenLine, Loader2, Plus } from "lucide-react";
+import { Upload, FileText, X, CheckCircle2, AlertCircle, PenLine, Loader2, Plus, Info } from "lucide-react";
 import { uploadDocument } from "../api/fileRoute";
 import { useNavigate } from 'react-router'
 import PdfViewer from "../components/PdfViewer";
 
-
 // Só PDF, igual ao input original (o backend só sabe processar PDF)
 const ACCEPTED = [".pdf"];
+
+// Mesmo limite configurado em backend/middlewares/uploadMiddleware.js (MAX_SIZE_BYTES)
+const MAX_SIZE_LABEL = "50MB";
 
 // Estados possíveis de cada arquivo na fila de upload
 const STATUS = {
@@ -159,7 +161,30 @@ export default function UploadScreen({ onContinue }) {
             <main className="relative z-10 flex-1 flex items-start justify-center px-6 py-6 scrollbar-hidden">
                 <div className="w-full max-w-lg flex flex-col gap-3 scrollbar-hidden pb-24 ">
                     {/* pb-24 dá espaço embaixo pro botão flutuante não cobrir o fim do conteúdo */}
-                    <h3 className="text-[#262626] font-bold">Upload your files</h3>
+                    {/* O passo a passo do fluxo (Enviar → Signatários → Assinar) agora é
+                        renderizado globalmente em routes/index.jsx, fora do slide de página —
+                        fica persistente ao navegar entre as telas em vez de remontar aqui. */}
+
+                    {/* Disclaimer do tipo/limite de arquivo — some junto com a dropzone assim que
+                        o primeiro arquivo é adicionado, já que deixa de ser relevante. */}
+                    <AnimatePresence>
+                        {!hasItems && (
+                            <motion.div
+                                key="disclaimer"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="flex items-center gap-1.5 text-gray-500 shrink-0 overflow-hidden"
+                            >
+                                <Info size={12} className="shrink-0" />
+                                <p className="text-xs">
+                                    Aceitamos apenas arquivos em PDF, com até {MAX_SIZE_LABEL} cada.
+                                </p>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
                     {/* Drop zone — só aparece antes de qualquer arquivo ser adicionado */}
                     <AnimatePresence>
                         {!hasItems && (
