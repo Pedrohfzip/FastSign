@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }) {
 
     if (loading) {
         return (
-            <div className="w-full h-screen flex items-center justify-center bg-[#0b0b12]">
+            <div className="w-full h-full flex items-center justify-center bg-[#0b0b12]">
                 <Loader2 size={24} className="text-white animate-spin" />
             </div>
         );

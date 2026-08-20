@@ -72,7 +72,7 @@ export default function DocumentToSignDetail() {
 
     return (
         <div
-            className="w-full h-screen overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
+            className="w-full h-full overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
             style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
         >
             <div
@@ -85,7 +85,7 @@ export default function DocumentToSignDetail() {
             <main className="relative z-10 flex-1 flex items-start justify-center px-6 py-10 overflow-y-auto scrollbar-hidden">
                 <div className="w-full max-w-lg flex flex-col gap-5 pb-10">
                     <button
-                        onClick={() => navigate("/documents")}
+                        onClick={() => navigate(-1)}
                         className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors w-fit"
                     >
                         <ArrowLeft size={15} />

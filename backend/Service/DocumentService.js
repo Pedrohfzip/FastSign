@@ -205,9 +205,12 @@ export async function deleteDocument(documentId, userId) {
         throw err;
     }
 
-    // Remove o registro (e, em cascata no banco, versões e signatários) antes de apagar os arquivos.
+    // Soft delete (Document é `paranoid: true`): só marca `deletedAt`, a linha continua no
+    // banco e document_versions/signatories/signatures não são tocados. Documento some das
+    // listagens e queries normais (o Sequelize já filtra sozinho), mas os arquivos no storage
+    // são MANTIDOS de propósito — apagar um documento não pode apagar junto a evidência
+    // jurídica (PDF assinado + certificado) de assinaturas já registradas.
     await document.destroy();
-    await storageService.deleteDocumentDir(documentId).catch(() => { });
 }
 
 export async function getDocumentBuffer(documentId) {

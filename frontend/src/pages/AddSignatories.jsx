@@ -96,7 +96,7 @@ export default function AddSignatories() {
 
         return (
             <div
-                className="w-full h-screen overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
+                className="w-full h-full overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
                 style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
             >
                 <div
@@ -210,7 +210,7 @@ export default function AddSignatories() {
     // Formulário de adição de signatários
     return (
         <div
-            className="w-full h-screen overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
+            className="w-full h-full overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
             style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
         >
             <div

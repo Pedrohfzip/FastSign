@@ -94,6 +94,13 @@ export default (sequelize, DataTypes) => {
             tableName: 'documents',
             underscored: true,
             timestamps: true,
+            // Soft delete: `.destroy()` só marca `deletedAt` (coluna `deleted_at`) em vez de
+            // apagar a linha de verdade, e o Sequelize passa a excluir automaticamente
+            // documentos com `deletedAt` preenchido de todo `find`/`findAll` (sem precisar
+            // filtrar isso manualmente nos services). Necessário pra excluir um documento sem
+            // esbarrar na FK RESTRICT de signatures.document_version_id quando ele já tem
+            // alguma assinatura — ver migration `add-deleted-at-to-documents`.
+            paranoid: true,
         }
     );
 

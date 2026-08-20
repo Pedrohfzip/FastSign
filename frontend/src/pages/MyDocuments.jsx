@@ -105,7 +105,11 @@ export default function MyDocuments() {
         setDeleteError(null);
         try {
             await deleteDocument(docToDelete.id);
+            // O documento excluído pode estar na aba "Meus documentos" OU na aba
+            // "Finalizados" (que também lista documentos que o usuário é dono, além dos
+            // que ele só assinou) — remove das duas listas, a que não tiver o id não muda nada.
             setDocuments((prev) => prev.filter((doc) => doc.id !== docToDelete.id));
+            setCompletedDocuments((prev) => prev.filter((doc) => doc.id !== docToDelete.id));
             setDocToDelete(null);
         } catch (err) {
             setDeleteError(err?.response?.data?.error || "Erro ao excluir documento.");
@@ -116,7 +120,7 @@ export default function MyDocuments() {
 
     return (
         <div
-            className="w-full h-screen overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
+            className="w-full h-full overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
             style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
         >
             <div
@@ -128,8 +132,15 @@ export default function MyDocuments() {
 
             <main className="relative z-10 flex-1 flex items-start justify-center px-6 py-10 overflow-y-auto scrollbar-hidden">
                 <div className="w-full max-w-2xl flex flex-col gap-5 pb-10">
+                    {/* "Meus documentos" é um hub acessado de vários lugares (menu, redirects,
+                        fluxos de assinatura) — em vez de depender do histórico do navegador
+                        (`navigate(-1)`, frágil aqui: DocumentDetail.jsx empurra um novo
+                        /documents com `navigate("/documents")` em vez de voltar de verdade,
+                        deixando a entrada antiga de /documents/:id "presa" logo atrás na pilha
+                        e fazendo o Voltar daqui cair de volta nela), sempre volta pra tela
+                        inicial fixa do fluxo (Enviar/Upload). */}
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={() => navigate("/upload")}
                         className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors w-fit"
                     >
                         <ArrowLeft size={15} />
@@ -480,17 +491,35 @@ export default function MyDocuments() {
                                                         </div>
                                                     </div>
 
-                                                    <span
-                                                        className="ml-12 sm:ml-0 self-start sm:self-auto text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1"
-                                                        style={{
-                                                            color: "#4ade80",
-                                                            background: "rgba(74,222,128,0.1)",
-                                                            border: "1px solid rgba(74,222,128,0.3)",
-                                                        }}
-                                                    >
-                                                        <CheckCircle2 size={11} />
-                                                        Concluído
-                                                    </span>
+                                                    <div className="flex items-center justify-between sm:justify-end gap-2 ml-12 sm:ml-0 shrink-0">
+                                                        <span
+                                                            className="text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1"
+                                                            style={{
+                                                                color: "#4ade80",
+                                                                background: "rgba(74,222,128,0.1)",
+                                                                border: "1px solid rgba(74,222,128,0.3)",
+                                                            }}
+                                                        >
+                                                            <CheckCircle2 size={11} />
+                                                            Concluído
+                                                        </span>
+
+                                                        {/* Excluir só é oferecido pro dono do documento — quem é só signatário
+                                                            não tem permissão (o backend também bloqueia isso com 403). */}
+                                                        {item.role === 'owner' && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setDeleteError(null);
+                                                                    setDocToDelete(item);
+                                                                }}
+                                                                title="Excluir documento"
+                                                                className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#f87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors"
+                                                            >
+                                                                <Trash2 size={15} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </motion.li>
                                             ))}
                                         </ul>
