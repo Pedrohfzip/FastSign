@@ -93,7 +93,7 @@ export default function SignScreen() {
 
     return (
         <div
-            className="w-full h-screen overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
+            className="w-full h-full overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
             style={{ fontFamily: "'DM Sans', 'Inter', sans-serif" }}
         >
             <div
@@ -107,7 +107,7 @@ export default function SignScreen() {
                 <div className="w-full max-w-lg flex flex-col items-center text-center gap-5 pb-10">
                     {!loading && (
                         <button
-                            onClick={() => navigate("/documents")}
+                            onClick={() => navigate(-1)}
                             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors self-start"
                         >
                             <ArrowLeft size={15} />
