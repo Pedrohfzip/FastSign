@@ -90,3 +90,65 @@ export async function getUserById(userId) {
     }
     return user;
 }
+
+export async function updateProfile(userId, { name, email, cpf }) {
+    const user = await User.findByPk(userId);
+    if (!user) {
+        const err = new Error('Usuário não encontrado.');
+        err.status = 404;
+        throw err;
+    }
+
+    const cpfDigits = cpf.replace(/\D/g, '');
+
+    // Só valida unicidade se o campo de fato mudou — senão o próprio registro do
+    // usuário bateria com ele mesmo e bloquearia o dono de salvar sem alterar nada.
+    if (email !== user.email) {
+        const existingEmail = await User.findOne({ where: { email } });
+        if (existingEmail) {
+            const err = new Error('E-mail já cadastrado.');
+            err.status = 409;
+            throw err;
+        }
+    }
+
+    if (cpfDigits !== user.cpf) {
+        const existingCpf = await User.findOne({ where: { cpf: cpfDigits } });
+        if (existingCpf) {
+            const err = new Error('CPF já cadastrado.');
+            err.status = 409;
+            throw err;
+        }
+    }
+
+    user.name = name;
+    user.email = email;
+    user.cpf = cpfDigits;
+    await user.save();
+
+    return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        cpf: user.cpf,
+    };
+}
+
+export async function changePassword(userId, { currentPassword, newPassword }) {
+    const user = await User.findByPk(userId);
+    if (!user) {
+        const err = new Error('Usuário não encontrado.');
+        err.status = 404;
+        throw err;
+    }
+
+    const passwordMatches = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!passwordMatches) {
+        const err = new Error('Senha atual incorreta.');
+        err.status = 401;
+        throw err;
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await user.save();
+}

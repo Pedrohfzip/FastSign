@@ -12,6 +12,9 @@ import PublicSign from '../pages/PublicSign'
 import MyDocuments from '../pages/MyDocuments'
 import DocumentDetail from '../pages/DocumentDetail'
 import DocumentToSignDetail from '../pages/DocumentToSignDetail'
+import Help from '../pages/Help'
+import About from '../pages/About'
+import Settings from '../pages/Settings'
 
 // Mapeia a rota atual pro passo do fluxo principal (Enviar → Signatários → Assinar).
 // Fora dessas 3 rotas não existe passo a passo — a barra fica escondida (ex: /documents,
@@ -153,6 +156,11 @@ export default function AppRoutes() {
             <Route path="/sign-up" element={<AnimatedPage direction={direction}><SignUp /></AnimatedPage>} />
             <Route path="/login" element={<AnimatedPage direction={direction}><Login /></AnimatedPage>} />
 
+            {/* Telas institucionais/estáticas, abertas pelo menu do Header — sem dado
+                sensível, então não precisam de ProtectedRoute. */}
+            <Route path="/help" element={<AnimatedPage direction={direction}><Help /></AnimatedPage>} />
+            <Route path="/about" element={<AnimatedPage direction={direction}><About /></AnimatedPage>} />
+
             {/* rota PÚBLICA — sem ProtectedRoute, signatário externo não precisa de conta */}
             <Route
               path="/assinar/:accessToken"
@@ -162,6 +170,10 @@ export default function AppRoutes() {
             <Route
               path="/documents"
               element={<AnimatedPage direction={direction}><ProtectedRoute><MyDocuments /></ProtectedRoute></AnimatedPage>}
+            />
+            <Route
+              path="/settings"
+              element={<AnimatedPage direction={direction}><ProtectedRoute><Settings /></ProtectedRoute></AnimatedPage>}
             />
             <Route
               path="/documents/:id"
