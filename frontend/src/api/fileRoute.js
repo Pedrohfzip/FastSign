@@ -37,8 +37,8 @@ export const downloadDocumentFile = async (documentId) => {
     return response.data;
 };
 
-export const addSignatories = async (documentId, signatories) => {
-    const response = await api.post(`/documents/${documentId}/signatories`, { signatories });
+export const addSignatories = async (documentId, signatories, requireDocument = false) => {
+    const response = await api.post(`/documents/${documentId}/signatories`, { signatories, requireDocument });
     return response.data;
 };
 

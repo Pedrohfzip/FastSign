@@ -5,18 +5,10 @@ import { useNavigate } from "react-router";
 import { motion } from "framer-motion";
 import { User, Mail, IdCard, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import { registerUser } from "../api/loginRoute"; // função de registro de usuário (ainda não implementada)
+import { formatCPF } from "../utils/formatDocument";
 const ACCENT = "#5b6af0";
 const ACCENT_SOFT = "rgba(91,106,240,0.12)";
 const BORDER_SOFT = "rgba(255,255,255,0.07)";
-
-// Formata CPF conforme o usuário digita: 000.000.000-00
-function formatCPF(value) {
-    const digits = value.replace(/\D/g, "").slice(0, 11);
-    return digits
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-}
 
 function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -100,12 +92,12 @@ export default function SignUp() {
                 }}
             />
 
-            <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-10 scrollbar-hidden">
+            <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-4 scrollbar-hidden">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
-                    className="w-full max-w-md flex flex-col gap-5"
+                    className="w-full max-w-md sm:max-w-xl flex flex-col gap-3"
                 >
                     {/* Voltar */}
                     <button
@@ -117,12 +109,12 @@ export default function SignUp() {
                     </button>
 
                     {/* Header */}
-                    <div className="flex flex-col items-center text-center gap-2 mb-1">
+                    <div className="flex flex-col items-center text-center gap-1.5">
                         <div
-                            className="w-11 h-11 rounded-xl flex items-center justify-center"
+                            className="w-10 h-10 rounded-xl flex items-center justify-center"
                             style={{ background: ACCENT_SOFT, border: `1px solid ${BORDER_SOFT}` }}
                         >
-                            <User size={18} style={{ color: ACCENT }} />
+                            <User size={16} style={{ color: ACCENT }} />
                         </div>
                         <h1 className="text-2xl font-semibold text-white">Crie sua conta</h1>
                         <p className="text-sm text-gray-400">
@@ -144,9 +136,11 @@ export default function SignUp() {
                         </div>
                     )}
 
-                    {/* Formulário */}
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                        {/* Nome */}
+                    {/* Formulário — em telas largas, os pares (e-mail/CPF e as duas senhas) ficam
+                        lado a lado (sm:grid-cols-2) pra reduzir a altura total do form; no mobile
+                        (coluna única) cada campo continua empilhado, sem mudança de comportamento */}
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+                        {/* Nome — sempre ocupa a linha inteira */}
                         <div className="flex flex-col gap-1.5">
                             <label className="text-xs text-gray-400 pl-1">Nome completo</label>
                             <div
@@ -168,102 +162,106 @@ export default function SignUp() {
                             {errors.name && <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors.name}</p>}
                         </div>
 
-                        {/* Email */}
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-xs text-gray-400 pl-1">E-mail</label>
-                            <div
-                                className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl"
-                                style={{
-                                    background: "rgba(255,255,255,0.03)",
-                                    border: `1px solid ${errors.email ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
-                                }}
-                            >
-                                <Mail size={16} className="text-gray-500 shrink-0" />
-                                <input
-                                    type="email"
-                                    value={form.email}
-                                    onChange={handleChange("email")}
-                                    placeholder="seu@email.com"
-                                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
-                                />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {/* Email */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs text-gray-400 pl-1">E-mail</label>
+                                <div
+                                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl"
+                                    style={{
+                                        background: "rgba(255,255,255,0.03)",
+                                        border: `1px solid ${errors.email ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
+                                    }}
+                                >
+                                    <Mail size={16} className="text-gray-500 shrink-0" />
+                                    <input
+                                        type="email"
+                                        value={form.email}
+                                        onChange={handleChange("email")}
+                                        placeholder="seu@email.com"
+                                        className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
+                                    />
+                                </div>
+                                {errors.email && <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors.email}</p>}
                             </div>
-                            {errors.email && <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors.email}</p>}
+
+                            {/* CPF */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs text-gray-400 pl-1">CPF</label>
+                                <div
+                                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl"
+                                    style={{
+                                        background: "rgba(255,255,255,0.03)",
+                                        border: `1px solid ${errors.cpf ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
+                                    }}
+                                >
+                                    <IdCard size={16} className="text-gray-500 shrink-0" />
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={form.cpf}
+                                        onChange={handleChange("cpf")}
+                                        placeholder="000.000.000-00"
+                                        maxLength={14}
+                                        className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
+                                    />
+                                </div>
+                                {errors.cpf && <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors.cpf}</p>}
+                            </div>
                         </div>
 
-                        {/* CPF */}
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-xs text-gray-400 pl-1">CPF</label>
-                            <div
-                                className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl"
-                                style={{
-                                    background: "rgba(255,255,255,0.03)",
-                                    border: `1px solid ${errors.cpf ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
-                                }}
-                            >
-                                <IdCard size={16} className="text-gray-500 shrink-0" />
-                                <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={form.cpf}
-                                    onChange={handleChange("cpf")}
-                                    placeholder="000.000.000-00"
-                                    maxLength={14}
-                                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
-                                />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {/* Senha */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs text-gray-400 pl-1">Senha</label>
+                                <div
+                                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl"
+                                    style={{
+                                        background: "rgba(255,255,255,0.03)",
+                                        border: `1px solid ${errors.password ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
+                                    }}
+                                >
+                                    <Lock size={16} className="text-gray-500 shrink-0" />
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        value={form.password}
+                                        onChange={handleChange("password")}
+                                        placeholder="Mínimo 6 caracteres"
+                                        className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
+                                    />
+                                    <button type="button" onClick={() => setShowPassword((p) => !p)} className="text-gray-500 hover:text-gray-300 shrink-0">
+                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                                {errors.password && <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors.password}</p>}
                             </div>
-                            {errors.cpf && <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors.cpf}</p>}
-                        </div>
 
-                        {/* Senha */}
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-xs text-gray-400 pl-1">Senha</label>
-                            <div
-                                className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl"
-                                style={{
-                                    background: "rgba(255,255,255,0.03)",
-                                    border: `1px solid ${errors.password ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
-                                }}
-                            >
-                                <Lock size={16} className="text-gray-500 shrink-0" />
-                                <input
-                                    type={showPassword ? "text" : "password"}
-                                    value={form.password}
-                                    onChange={handleChange("password")}
-                                    placeholder="Mínimo 6 caracteres"
-                                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
-                                />
-                                <button type="button" onClick={() => setShowPassword((p) => !p)} className="text-gray-500 hover:text-gray-300 shrink-0">
-                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                </button>
+                            {/* Confirmar senha */}
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs text-gray-400 pl-1">Confirmar senha</label>
+                                <div
+                                    className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl"
+                                    style={{
+                                        background: "rgba(255,255,255,0.03)",
+                                        border: `1px solid ${errors.confirmPassword ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
+                                    }}
+                                >
+                                    <Lock size={16} className="text-gray-500 shrink-0" />
+                                    <input
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        value={form.confirmPassword}
+                                        onChange={handleChange("confirmPassword")}
+                                        placeholder="Repita a senha"
+                                        className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
+                                    />
+                                    <button type="button" onClick={() => setShowConfirmPassword((p) => !p)} className="text-gray-500 hover:text-gray-300 shrink-0">
+                                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                                {errors.confirmPassword && (
+                                    <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors.confirmPassword}</p>
+                                )}
                             </div>
-                            {errors.password && <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors.password}</p>}
-                        </div>
-
-                        {/* Confirmar senha */}
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-xs text-gray-400 pl-1">Confirmar senha</label>
-                            <div
-                                className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl"
-                                style={{
-                                    background: "rgba(255,255,255,0.03)",
-                                    border: `1px solid ${errors.confirmPassword ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
-                                }}
-                            >
-                                <Lock size={16} className="text-gray-500 shrink-0" />
-                                <input
-                                    type={showConfirmPassword ? "text" : "password"}
-                                    value={form.confirmPassword}
-                                    onChange={handleChange("confirmPassword")}
-                                    placeholder="Repita a senha"
-                                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
-                                />
-                                <button type="button" onClick={() => setShowConfirmPassword((p) => !p)} className="text-gray-500 hover:text-gray-300 shrink-0">
-                                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                </button>
-                            </div>
-                            {errors.confirmPassword && (
-                                <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors.confirmPassword}</p>
-                            )}
                         </div>
 
                         {/* Botão de submit */}
@@ -272,7 +270,7 @@ export default function SignUp() {
                             disabled={submitting}
                             whileHover={{ scale: submitting ? 1 : 1.02 }}
                             whileTap={{ scale: submitting ? 1 : 0.98 }}
-                            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-semibold text-white mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-semibold text-white mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
                             style={{
                                 background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)`,
                                 boxShadow: "0 8px 24px rgba(91, 106, 240, 0.3)",
@@ -293,7 +291,7 @@ export default function SignUp() {
                     </form>
 
                     {/* Link para login */}
-                    <p className="text-center text-sm text-gray-400 mt-1">
+                    <p className="text-center text-sm text-gray-400">
                         Já tem uma conta?{" "}
                         <button
                             onClick={() => navigate("/login")}

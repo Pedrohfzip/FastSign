@@ -19,6 +19,7 @@ const SignController = {
                     status: signatory.document.status,
                     createdAt: signatory.document.createdAt,
                     ownerName: signatory.document.owner?.name || null,
+                    requireSignatoryDocument: signatory.document.requireSignatoryDocument,
                     suggestedPosition: {
                         page: signatory.document.suggestedPage || 1,
                         x: signatory.document.suggestedX ?? 0.5,
@@ -53,14 +54,18 @@ const SignController = {
     async sign(req, res) {
         try {
             const { accessToken } = req.params;
-            const { signatureImage, signatureType, position } = req.body;
+            const { signatureImage, signatureType, position, signatoryDocumentType, signatoryDocumentNumber } = req.body;
 
             const requestMeta = {
                 ip: req.ip,
                 userAgent: req.headers['user-agent'],
             };
 
-            const signatory = await signDocument(accessToken, { signatureImage, signatureType, position }, requestMeta);
+            const signatory = await signDocument(
+                accessToken,
+                { signatureImage, signatureType, position, signatoryDocumentType, signatoryDocumentNumber },
+                requestMeta
+            );
 
             return res.json({
                 message: 'Documento assinado com sucesso.',

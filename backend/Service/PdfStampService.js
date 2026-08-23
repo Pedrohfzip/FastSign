@@ -128,6 +128,12 @@ const SIGNATURE_TYPE_LABELS = {
     UPLOADED: 'Assinatura enviada como imagem',
 };
 
+const DOCUMENT_TYPE_LABELS = {
+    CPF: 'CPF',
+    RG: 'RG',
+    OUTRO: 'Documento',
+};
+
 // Código do primeiro caractere que a WinAnsiEncoding (usada pelas fontes padrão do
 // PDF — Helvetica, Courier) já não sabe mais desenhar de forma confiável acima da
 // faixa ASCII imprimível.
@@ -393,6 +399,11 @@ export async function appendSignatureCertificate(pdfBuffer, { documentTitle, doc
         const emailLine = sanitizePdfText(entry.email || '');
         const ipLine = sanitizePdfText(entry.ipAddress || 'não disponível');
         const typeLabel = SIGNATURE_TYPE_LABELS[entry.signatureType] || SIGNATURE_TYPE_LABELS.TYPED;
+        // Só presente quando o dono exigiu documento de identificação pro documento
+        // (Document.requireSignatoryDocument) — linha extra opcional no card.
+        const documentLine = entry.signatoryDocumentNumber
+            ? `${DOCUMENT_TYPE_LABELS[entry.signatoryDocumentType] || DOCUMENT_TYPE_LABELS.OUTRO}: ${sanitizePdfText(entry.signatoryDocumentNumber)}`
+            : null;
         const image = await embedEntryImage(entry.signatureImage);
 
         let imageDrawWidth = 0;
@@ -408,7 +419,7 @@ export async function appendSignatureCertificate(pdfBuffer, { documentTitle, doc
         }
 
         // Estima a altura do card antes de desenhar, pra decidir se precisa de nova página.
-        const estimatedCardHeight = CARD_PADDING * 2 + 16 /*nome*/ + 13 /*email*/ + 13 /*data*/ + 13 /*tipo+ip*/ + 12 /*hash label*/ + 12 /*hash*/ + Math.max(imageDrawHeight, 0) + 10;
+        const estimatedCardHeight = CARD_PADDING * 2 + 16 /*nome*/ + 13 /*email*/ + 13 /*data*/ + 13 /*tipo+ip*/ + (documentLine ? 13 : 0) + 12 /*hash label*/ + 12 /*hash*/ + Math.max(imageDrawHeight, 0) + 10;
 
         if (cursorY - estimatedCardHeight < BOTTOM_LIMIT) {
             drawHeader({ continuation: true });
@@ -448,7 +459,18 @@ export async function appendSignatureCertificate(pdfBuffer, { documentTitle, doc
             font,
             color: TEXT_MUTED_RGB,
         });
-        textY -= 14;
+        textY -= 13;
+        if (documentLine) {
+            page.drawText(`Documento apresentado: ${documentLine}`, {
+                x: textX,
+                y: textY,
+                size: 9,
+                font,
+                color: TEXT_MUTED_RGB,
+            });
+            textY -= 13;
+        }
+        textY -= 1;
         page.drawText('Hash SHA-256 do documento no momento desta assinatura:', {
             x: textX,
             y: textY,

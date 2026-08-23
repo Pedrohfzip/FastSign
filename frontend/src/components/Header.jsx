@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router';
-import { Menu, FileText, Settings, HelpCircle, Info, LogOut, Home } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router';
+import { Menu, FileText, Settings, HelpCircle, Info, LogOut, Home, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 
@@ -13,6 +13,7 @@ const Header = () => {
     const buttonRef = useRef(null);
     const menuRef = useRef(null);
     const navigate = useNavigate();
+    const location = useLocation();
     const { isAuthenticated, user, logout } = useAuth();
 
     const MENU_OPTIONS = [
@@ -36,6 +37,15 @@ const Header = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // PublicSign.jsx (/assinar/:accessToken) é a página que o signatário externo abre
+    // direto de um link de e-mail, sem conta — o Header (menu/Entrar) não faz sentido
+    // ali, é só ruído numa tela que já é auto-contida. Vem DEPOIS de todos os hooks
+    // (useState/useEffect acima) de propósito — um return condicional antes deles
+    // violaria as Rules of Hooks assim que o usuário navegasse pra/de essa rota.
+    if (location.pathname.startsWith('/assinar/')) {
+        return null;
+    }
+
     const toggleMenu = () => {
         if (!menuOpen && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
@@ -57,13 +67,30 @@ const Header = () => {
 
     return (
         <header
-            className={`w-full px-6 py-4 flex items-center relative ${isAuthenticated ? 'justify-between' : 'justify-end'}`}
+            className="w-full px-6 py-4 flex items-center justify-between relative"
             style={{
                 background: "#0b0b12",
                 backdropFilter: "blur(8px)",
                 WebkitBackdropFilter: "blur(8px)",
             }}
         >
+            {/* Logo — só aparece deslogado, já que logado o canto esquerdo já é ocupado
+                pelo botão de menu (hamburguer) */}
+            {!isAuthenticated && (
+                <button
+                    onClick={() => navigate('/')}
+                    className="flex items-center gap-2"
+                >
+                    <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: "linear-gradient(135deg, #5b6af0 0%, #7c5cf6 100%)" }}
+                    >
+                        <Zap size={14} className="text-white" fill="currentColor" />
+                    </div>
+                    <span className="text-sm font-semibold text-white">FastSign</span>
+                </button>
+            )}
+
             {/* Botão de menu + dropdown flutuante — só aparece logado, já que as opções
                 (meus documentos, configurações etc.) não fazem sentido pra quem ainda não entrou */}
             {isAuthenticated && (

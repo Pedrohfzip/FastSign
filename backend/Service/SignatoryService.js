@@ -6,7 +6,7 @@ import { sendSignatureInvite } from './EmailService.js';
 import { stampSignatureImage, getPdfPageCount, stripTrailingPages, appendSignatureCertificate } from './PdfStampService.js';
 const { Document, DocumentVersion, Signatory, Signature, User, sequelize } = db;
 
-export async function addSignatoriesToDocument(documentId, signatoriesData, requestingUserId) {
+export async function addSignatoriesToDocument(documentId, signatoriesData, requestingUserId, requireDocument = false) {
     const document = await Document.findByPk(documentId);
 
     if (!document) {
@@ -29,6 +29,13 @@ export async function addSignatoriesToDocument(documentId, signatoriesData, requ
 
     const requestingUser = await User.findByPk(requestingUserId);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+    // Vale pra TODOS os signatários deste documento, não só os que estão sendo
+    // adicionados agora nesta chamada — decidido uma vez, na primeira leva.
+    if (requireDocument && !document.requireSignatoryDocument) {
+        document.requireSignatoryDocument = true;
+        await document.save();
+    }
 
     const created = await Promise.all(
         signatoriesData.map(async ({ name, email }) => {
@@ -132,7 +139,13 @@ export async function getDocumentFileByToken(accessToken) {
     return { buffer, originalName: signatory.document.originalName };
 }
 
-export async function signDocument(accessToken, { signatureImage, signatureType, position }, requestMeta) {
+const VALID_DOCUMENT_TYPES = ['CPF', 'RG', 'OUTRO'];
+
+export async function signDocument(
+    accessToken,
+    { signatureImage, signatureType, position, signatoryDocumentType, signatoryDocumentNumber },
+    requestMeta
+) {
     // Assinar sem carimbar seria um bug silencioso de integridade — a imagem é obrigatória.
     if (!signatureImage) {
         const err = new Error('Imagem de assinatura é obrigatória.');
@@ -140,7 +153,10 @@ export async function signDocument(accessToken, { signatureImage, signatureType,
         throw err;
     }
 
-    const signatory = await Signatory.findOne({ where: { accessToken } });
+    const signatory = await Signatory.findOne({
+        where: { accessToken },
+        include: [{ model: Document, as: 'document' }],
+    });
 
     if (!signatory) {
         const err = new Error('Link de assinatura inválido.');
@@ -152,6 +168,25 @@ export async function signDocument(accessToken, { signatureImage, signatureType,
         const err = new Error('Este documento já foi assinado ou recusado por você.');
         err.statusCode = 409;
         throw err;
+    }
+
+    // Documento de identificação — só exigido quando o dono ligou essa opção ao
+    // adicionar os signatários (ver addSignatoriesToDocument). É evidência adicional,
+    // não uma validação de autenticidade real (ver About.jsx: "assinatura eletrônica
+    // simples", sem ICP-Brasil) — por isso só checamos presença/formato básico, não
+    // dígito verificador de CPF nem se o documento é genuíno.
+    const documentNumber = (signatoryDocumentNumber || '').trim();
+    if (signatory.document.requireSignatoryDocument) {
+        if (!documentNumber) {
+            const err = new Error('Informe o número do documento de identificação para assinar.');
+            err.statusCode = 400;
+            throw err;
+        }
+        if (!VALID_DOCUMENT_TYPES.includes(signatoryDocumentType)) {
+            const err = new Error('Tipo de documento de identificação inválido.');
+            err.statusCode = 400;
+            throw err;
+        }
     }
 
     // O PDF carimbado é salvo em disco fora da transação (não é transacional por natureza);
@@ -241,6 +276,8 @@ export async function signDocument(accessToken, { signatureImage, signatureType,
                     ipAddress: sig.ipAddress,
                     signatureType: sig.signatureType,
                     signatureImage: sig.signatureImage,
+                    signatoryDocumentType: sig.signatoryDocumentType,
+                    signatoryDocumentNumber: sig.signatoryDocumentNumber,
                 })),
                 {
                     name: freshSignatory.name,
@@ -250,6 +287,8 @@ export async function signDocument(accessToken, { signatureImage, signatureType,
                     ipAddress: requestMeta.ip,
                     signatureType: signatureType || 'TYPED',
                     signatureImage,
+                    signatoryDocumentType: signatory.document.requireSignatoryDocument ? signatoryDocumentType : null,
+                    signatoryDocumentNumber: signatory.document.requireSignatoryDocument ? documentNumber : null,
                 },
             ];
 
@@ -285,6 +324,8 @@ export async function signDocument(accessToken, { signatureImage, signatureType,
                 documentHash,
                 ipAddress: requestMeta.ip,
                 userAgent: requestMeta.userAgent,
+                signatoryDocumentType: signatory.document.requireSignatoryDocument ? signatoryDocumentType : null,
+                signatoryDocumentNumber: signatory.document.requireSignatoryDocument ? documentNumber : null,
                 signedAt,
             }, { transaction: t });
 

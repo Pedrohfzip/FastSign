@@ -87,6 +87,16 @@ export default (sequelize, DataTypes) => {
                 allowNull: true,
                 field: 'content_page_count',
             },
+            requireSignatoryDocument: {
+                // Decidido pelo dono ao adicionar os signatários (AddSignatories.jsx). Quando
+                // true, a tela de assinar (SignScreen.jsx/PublicSign.jsx) exige CPF/RG/outro
+                // documento do signatário além do nome — ver Signature.signatoryDocumentType/
+                // signatoryDocumentNumber, que é onde esse dado fica guardado como evidência.
+                type: DataTypes.BOOLEAN,
+                allowNull: false,
+                defaultValue: false,
+                field: 'require_signatory_document',
+            },
         },
         {
             sequelize,

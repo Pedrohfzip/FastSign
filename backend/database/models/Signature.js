@@ -58,6 +58,18 @@ export default (sequelize, DataTypes) => {
                 allowNull: true,
                 field: 'user_agent',
             },
+            signatoryDocumentType: {
+                // Só preenchido quando Document.requireSignatoryDocument é true pro documento
+                // desse signatário — ver SignatoryService.signDocument, que valida isso.
+                type: DataTypes.ENUM('CPF', 'RG', 'OUTRO'),
+                allowNull: true,
+                field: 'signatory_document_type',
+            },
+            signatoryDocumentNumber: {
+                type: DataTypes.STRING(32),
+                allowNull: true,
+                field: 'signatory_document_number',
+            },
             signedAt: {
                 type: DataTypes.DATE,
                 allowNull: false,

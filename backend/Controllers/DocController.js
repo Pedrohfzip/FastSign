@@ -81,9 +81,9 @@ const DocController = {
     async addSignatories(req, res) {
         try {
             const { id: documentId } = req.params;
-            const { signatories } = req.body;
+            const { signatories, requireDocument } = req.body;
 
-            const created = await addSignatoriesToDocument(documentId, signatories, req.userId);
+            const created = await addSignatoriesToDocument(documentId, signatories, req.userId, Boolean(requireDocument));
 
             return res.status(201).json({
                 message: 'Signatários adicionados com sucesso.',

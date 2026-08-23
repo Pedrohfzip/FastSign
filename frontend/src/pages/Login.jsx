@@ -66,12 +66,12 @@ export default function Login() {
                 }}
             />
 
-            <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-10 scrollbar-hidden">
+            <main className="relative z-10 flex-1 flex items-center justify-center px-6 py-6 scrollbar-hidden">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
-                    className="w-full max-w-md flex flex-col gap-5"
+                    className="w-full max-w-md flex flex-col gap-4"
                 >
                     {/* Voltar */}
                     <button
@@ -83,12 +83,12 @@ export default function Login() {
                     </button>
 
                     {/* Header */}
-                    <div className="flex flex-col items-center text-center gap-2 mb-1">
+                    <div className="flex flex-col items-center text-center gap-1.5">
                         <div
-                            className="w-11 h-11 rounded-xl flex items-center justify-center"
+                            className="w-10 h-10 rounded-xl flex items-center justify-center"
                             style={{ background: ACCENT_SOFT, border: `1px solid ${BORDER_SOFT}` }}
                         >
-                            <Lock size={18} style={{ color: ACCENT }} />
+                            <Lock size={16} style={{ color: ACCENT }} />
                         </div>
                         <h1 className="text-2xl font-semibold text-white">Entrar</h1>
                         <p className="text-sm text-gray-400">Acesse sua conta para continuar.</p>

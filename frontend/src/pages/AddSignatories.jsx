@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, X, Mail, User, ArrowRight, ArrowLeft, Loader2, Link2, Check, UserCheck, PenLine } from "lucide-react";
+import { UserPlus, X, Mail, User, ArrowRight, ArrowLeft, Loader2, Link2, Check, UserCheck, PenLine, ShieldCheck } from "lucide-react";
 import { addSignatories } from "../api/fileRoute";
 import { useAuth } from "../context/AuthContext";
 
@@ -27,6 +27,7 @@ export default function AddSignatories() {
     const { user } = useAuth();
 
     const [includeSelf, setIncludeSelf] = useState(false);
+    const [requireDocument, setRequireDocument] = useState(false);
     const [rows, setRows] = useState([]);
     const [errors, setErrors] = useState({});
     const [submitting, setSubmitting] = useState(false);
@@ -80,7 +81,7 @@ export default function AddSignatories() {
                 payload.push({ name: user.name, email: user.email, });
             }
 
-            const result = await addSignatories(documentId, payload);
+            const result = await addSignatories(documentId, payload, requireDocument);
             setCreatedLinks(result.signatories);
         } catch (err) {
             setApiError(err?.response?.data?.error || "Erro ao adicionar signatários.");
@@ -287,6 +288,48 @@ export default function AddSignatories() {
                         <UserCheck size={16} className="text-gray-400 shrink-0" />
 
                         <span className="text-sm text-white font-medium">Eu também vou assinar</span>
+                    </button>
+
+                    {/* Exige CPF/RG/outro documento do signatário na hora de assinar — vira mais
+                        uma evidência gravada junto com a assinatura (como hash, IP etc. já são),
+                        não uma validação de autenticidade real. Vale pra todos os signatários
+                        deste documento, inclusive o próprio dono se "Eu também vou assinar". */}
+                    <button
+                        type="button"
+                        onClick={() => setRequireDocument((prev) => !prev)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors"
+                        style={{
+                            background: requireDocument ? "rgba(91,106,240,0.1)" : "rgba(255,255,255,0.02)",
+                            border: `1px solid ${requireDocument ? "rgba(91,106,240,0.4)" : BORDER_SOFT}`,
+                        }}
+                    >
+                        <div
+                            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors"
+                            style={{
+                                background: requireDocument ? ACCENT : "transparent",
+                                border: `1.5px solid ${requireDocument ? ACCENT : "rgba(255,255,255,0.25)"}`,
+                            }}
+                        >
+                            <AnimatePresence>
+                                {requireDocument && (
+                                    <motion.div
+                                        initial={{ scale: 0, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0, opacity: 0 }}
+                                        transition={{ duration: 0.15 }}
+                                    >
+                                        <Check size={13} color="#fff" strokeWidth={3} />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        <ShieldCheck size={16} className="text-gray-400 shrink-0" />
+
+                        <div className="flex flex-col">
+                            <span className="text-sm text-white font-medium">Exigir documento de identificação</span>
+                            <span className="text-xs text-gray-500">CPF, RG ou outro — pedido na hora de assinar, como prova extra de identidade.</span>
+                        </div>
                     </button>
 
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">

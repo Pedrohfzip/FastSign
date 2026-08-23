@@ -1,14 +1,21 @@
 // Tela pública de assinatura — acessada via link com accessToken, sem necessidade de conta
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router";
+import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, PenLine, CheckCircle2, Loader2, AlertCircle, Check, User, MousePointerClick } from "lucide-react";
+import { FileText, PenLine, CheckCircle2, Loader2, AlertCircle, Check, User, MousePointerClick, IdCard } from "lucide-react";
 import { getSignatureInfo, getSignatureFile, confirmSignature } from "../api/signRoute";
 import PdfPositionPicker from "../components/PdfPositionPicker";
 import { useSignatureImage } from "../hooks/useSignatureImage";
+import { formatCPF } from "../utils/formatDocument";
 
 const ACCENT = "#5b6af0";
 const BORDER_SOFT = "rgba(255,255,255,0.07)";
+
+const DOCUMENT_TYPE_OPTIONS = [
+    { value: "CPF", label: "CPF" },
+    { value: "RG", label: "RG" },
+    { value: "OUTRO", label: "Outro" },
+];
 
 // Mesma curva de easing usada na troca de ROTA em routes/index.jsx (slideTransition) —
 // reaproveitada aqui pra troca de STEP ter a mesma "sensação" do resto do app.
@@ -25,6 +32,7 @@ const stepContentVariants = {
 
 export default function PublicSign() {
     const { accessToken } = useParams();
+    const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
@@ -40,6 +48,8 @@ export default function PublicSign() {
     const [position, setPosition] = useState(null);
     const [positionConfirmed, setPositionConfirmed] = useState(false);
     const [signatureName, setSignatureName] = useState("");
+    const [documentType, setDocumentType] = useState("CPF");
+    const [documentNumber, setDocumentNumber] = useState("");
 
     const { imageDataUrl: signatureImage, loading: signatureLoading } = useSignatureImage(signatureName);
 
@@ -95,11 +105,25 @@ export default function PublicSign() {
         setConfirmError(null);
     };
 
+    const handleDocumentNumberChange = (e) => {
+        const value = documentType === "CPF" ? formatCPF(e.target.value) : e.target.value;
+        setDocumentNumber(value);
+        setConfirmError(null);
+    };
+
+    const requireDocument = Boolean(data?.document?.requireSignatoryDocument);
+    const documentMissing = requireDocument && !documentNumber.trim();
+
     const handleConfirm = async () => {
         setSigning(true);
         setConfirmError(null);
         try {
-            await confirmSignature(accessToken, { signatureImage, position });
+            await confirmSignature(accessToken, {
+                signatureImage,
+                position,
+                signatoryDocumentType: requireDocument ? documentType : undefined,
+                signatoryDocumentNumber: requireDocument ? documentNumber.trim() : undefined,
+            });
             setSigned(true);
         } catch (err) {
             setConfirmError(err?.response?.data?.error || "Erro ao confirmar assinatura.");
@@ -225,11 +249,32 @@ export default function PublicSign() {
                         </motion.div>
                     )}
 
-                    {/* Conteúdo específico do step — só o "form" tem algo além do cabeçalho
-                        (error e done são só a moldura acima, igual já era antes). Troca com
-                        "virada de página": mode="wait" garante que o conteúdo antigo termina de
-                        sair antes do novo começar a entrar, sem sobreposição confusa. */}
+                    {/* Conteúdo específico do step — "error" continua sendo só a moldura acima.
+                        Troca com "virada de página": mode="wait" garante que o conteúdo antigo
+                        termina de sair antes do novo começar a entrar, sem sobreposição confusa. */}
                     <AnimatePresence mode="wait">
+                        {step === "done" && (
+                            <motion.div
+                                key="done"
+                                variants={stepContentVariants}
+                                initial="initial"
+                                animate="animate"
+                                exit="exit"
+                                transition={{ duration: 0.3, ease: STEP_EASE }}
+                                className="w-full flex flex-col items-center"
+                            >
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => navigate("/")}
+                                    className="flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-semibold text-white mt-2"
+                                    style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)` }}
+                                >
+                                    Ir para o início
+                                </motion.button>
+                            </motion.div>
+                        )}
+
                         {step === "form" && (
                             <motion.div
                                 key="form"
@@ -257,6 +302,45 @@ export default function PublicSign() {
                                         />
                                     </div>
                                 </div>
+
+                                {/* Só aparece quando o dono exigiu documento de identificação ao
+                                    adicionar os signatários (ver AddSignatories.jsx). Vira mais uma
+                                    evidência gravada com a assinatura, não uma validação de
+                                    autenticidade real — ver PdfStampService.appendSignatureCertificate. */}
+                                {requireDocument && (
+                                    <div className="w-full flex flex-col gap-2 text-left">
+                                        <label className="text-xs text-gray-500 px-1">Documento de identificação</label>
+                                        <div className="flex gap-2">
+                                            <select
+                                                value={documentType}
+                                                onChange={(e) => { setDocumentType(e.target.value); setDocumentNumber(""); }}
+                                                disabled={signing}
+                                                className="px-3 rounded-lg text-sm text-white outline-none shrink-0"
+                                                style={{ background: "#14141f", border: `1px solid ${BORDER_SOFT}` }}
+                                            >
+                                                {DOCUMENT_TYPE_OPTIONS.map((opt) => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                            <div
+                                                className="flex-1 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg"
+                                                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                                            >
+                                                <IdCard size={15} className="text-gray-500 shrink-0" />
+                                                <input
+                                                    type="text"
+                                                    inputMode={documentType === "CPF" ? "numeric" : "text"}
+                                                    value={documentNumber}
+                                                    onChange={handleDocumentNumberChange}
+                                                    placeholder={documentType === "CPF" ? "000.000.000-00" : "Número do documento"}
+                                                    maxLength={documentType === "CPF" ? 14 : 32}
+                                                    disabled={signing}
+                                                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div
                                     className="w-full flex items-start gap-2.5 px-3.5 py-3 rounded-xl text-left"
@@ -322,9 +406,9 @@ export default function PublicSign() {
                                 )}
 
                                 <motion.button
-                                    whileHover={{ scale: signing || !positionConfirmed || !signatureImage ? 1 : 1.03 }}
-                                    whileTap={{ scale: signing || !positionConfirmed || !signatureImage ? 1 : 0.97 }}
-                                    disabled={signing || !positionConfirmed || !signatureImage || signatureLoading}
+                                    whileHover={{ scale: signing || !positionConfirmed || !signatureImage || documentMissing ? 1 : 1.03 }}
+                                    whileTap={{ scale: signing || !positionConfirmed || !signatureImage || documentMissing ? 1 : 0.97 }}
+                                    disabled={signing || !positionConfirmed || !signatureImage || signatureLoading || documentMissing}
                                     onClick={handleConfirm}
                                     className="flex items-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-semibold text-white mt-2 disabled:opacity-60"
                                     style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)`, boxShadow: "0 8px 24px rgba(91, 106, 240, 0.3)" }}
