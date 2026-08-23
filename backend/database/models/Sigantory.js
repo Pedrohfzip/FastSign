@@ -68,6 +68,11 @@ export default (sequelize, DataTypes) => {
                 allowNull: true,
                 field: 'decline_reason',
             },
+            tokenExpiresAt: {
+                type: DataTypes.DATE,
+                allowNull: true,
+                field: 'token_expires_at',
+            },
         },
         {
             sequelize,

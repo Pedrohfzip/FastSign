@@ -35,16 +35,24 @@ frontend/src/
                          de assinatura"), DocumentDetail.jsx (tem botão "Baixar documento" que baixa a
                          `currentVersion` via `GET /documents/:id/file` como blob — já vem com o
                          certificado de assinaturas se houver alguma assinatura)
-  components/          → Header.jsx, ProtectedRoute.jsx, RootGate.jsx, PdfViewer.jsx (visualizador
-                         genérico de PDF via pdfjs-dist, com paginação por botões — sem NENHUMA lógica
-                         de assinatura), PdfPositionPicker.jsx (compõe o PdfViewer + a lógica de
-                         escolher/marcar onde a assinatura vai, incluindo a prévia WYSIWYG da imagem
-                         de assinatura gerada; usado em SignScreen.jsx e PublicSign.jsx)
+  components/          → Header.jsx (logo "FastSign" no canto esquerdo só quando deslogado — logado
+                         esse espaço é do botão de menu; o componente retorna `null` de propósito em
+                         `/assinar/:accessToken`, já que o PublicSign.jsx não tem conta nem faz sentido
+                         mostrar menu/Entrar ali — esse `return null` vem DEPOIS de todos os hooks, pra
+                         não violar as Rules of Hooks ao navegar de/pra essa rota), ProtectedRoute.jsx,
+                         RootGate.jsx, PdfViewer.jsx (visualizador genérico de PDF via pdfjs-dist, com
+                         paginação por botões — sem NENHUMA lógica de assinatura), PdfPositionPicker.jsx
+                         (compõe o PdfViewer + a lógica de escolher/marcar onde a assinatura vai,
+                         incluindo a prévia WYSIWYG da imagem de assinatura gerada; usado em
+                         SignScreen.jsx e PublicSign.jsx)
   hooks/               → useSignatureImage.js (gera a imagem de assinatura — PNG data URL — a partir
                          de um nome, num <canvas> fora do DOM, usando a fonte "Dancing Script")
   context/             → AuthContext.jsx (useAuth hook)
   api/                 → index.js (instância axios), fileRoute.js, authRoute.js (também chamado loginRoute.js
                          em algumas versões — CONFIRME o nome real no projeto), signRoute.js
+  utils/               → formatDocument.js (`formatCPF` — formata "000.000.000-00" enquanto o usuário
+                         digita; usado em SignUp.jsx e no campo opcional de documento de identificação
+                         em SignScreen.jsx/PublicSign.jsx — mesma regra nos dois lugares, não duplicar)
   routes/index.jsx     → todas as rotas, com AnimatePresence + slide transition entre páginas
 ```
 
@@ -56,11 +64,16 @@ User (id, name, email, cpf, passwordHash, isActive)
   └─ hasMany Signatory (userId — só preenchido quando o email do signatário bate com o do usuário)
 
 Document (id, userId, title, status[DRAFT|PENDING|IN_PROGRESS|COMPLETED|CANCELLED],
-          currentVersionId, aiSummary, suggestedPage/X/Y, contentPageCount, deletedAt)
+          currentVersionId, aiSummary, suggestedPage/X/Y, contentPageCount,
+          requireSignatoryDocument, deletedAt)
   paranoid: true → soft delete nativo do Sequelize (deletedAt), NÃO apaga a linha
   contentPageCount: nº de páginas do documento "real" (original + carimbos), SEM contar a(s)
     página(s) de certificado de assinatura anexadas no final. Fica null até a 1ª assinatura, quando
     é fixado pra sempre — ver "Fluxo de assinatura" e PdfStampService.appendSignatureCertificate
+  requireSignatoryDocument: opcional, decidido pelo DONO ao adicionar os signatários
+    (AddSignatories.jsx, checkbox "Exigir documento de identificação") — default false. Quando true,
+    vale pra TODOS os signatários deste documento (não dá pra ligar por signatário individual nem
+    desligar depois de ligado). Ver "Fluxo de assinatura" e Signature.signatoryDocumentType/Number
   └─ hasMany DocumentVersion
   └─ hasMany Signatory
   └─ belongsTo User as 'owner'
@@ -68,20 +81,37 @@ Document (id, userId, title, status[DRAFT|PENDING|IN_PROGRESS|COMPLETED|CANCELLE
 DocumentVersion (id, documentId, versionNumber, filePath, fileSize, checksum, pageCount, uploadedBy)
   → cada assinatura CRIA UMA NOVA VERSÃO do PDF já carimbado (via pdf-lib, em PdfStampService.js).
     uploadedBy é sempre o DONO do documento (document.userId), não o signatário — signatário não é
-    necessariamente um User. pageCount só é populado a partir de agora (versões criadas antes disso
-    ficam null pra sempre, sem backfill)
+    necessariamente um User. pageCount é populado por PdfStampService em toda versão criada a partir de
+    uma assinatura; pras versões anteriores a essa mudança (a v1 de upload, sempre), foi rodado um
+    backfill uma vez (migration `20260823020000-backfill-document-version-page-count.cjs`, lê o PDF de
+    `file_path` no disco e calcula via pdf-lib) — fica null só quando o arquivo já não existe mais em
+    disco nessa hora (dado órfão)
 
 Signatory (id, documentId, userId[nullable], name, email, status[PENDING|SIGNED|DECLINED],
-           accessToken, signedAt)
-  → accessToken usado nos links /assinar/:token (público) e /sign/:token (autenticado, é o dono)
+           accessToken, tokenExpiresAt, signedAt)
+  → accessToken usado nos links /assinar/:token (público) e /sign/:token (autenticado, é o dono).
+    tokenExpiresAt é setado na criação (addSignatoriesToDocument, `now + SIGNATORY_TOKEN_TTL_DAYS`
+    dias — 7 hoje, constante em SignatoryService.js) e checado (assertTokenNotExpired) nas 3 rotas
+    que recebem o token — GET /sign/:token, GET /sign/:token/file, POST /sign/:token — retornando
+    410 se vencido. Nullable: signatórios criados antes dessa feature ficam sem expiração (não dá
+    pra invalidar retroativamente um link já enviado). Além disso, `signRouter.js` aplica rate
+    limiting por accessToken (não por IP — o mesmo link pode ser aberto de vários
+    dispositivos/redes pelo mesmo signatário) via `middlewares/signRateLimitMiddleware.js`
+    (`express-rate-limit`): 60 requisições/15min nas rotas de leitura, 10/15min em POST (assinar)
 
 Signature (id, signatoryId, documentVersionId, signatureImage, signatureType, documentHash,
-           ipAddress, userAgent, signedAt)
+           ipAddress, userAgent, signatoryDocumentType[CPF|RG|OUTRO, nullable],
+           signatoryDocumentNumber[nullable], signedAt)
   → evidência jurídica: hash SHA-256 do PDF no momento exato da assinatura + IP + user agent.
     documentVersionId aponta pra versão PRÉ-carimbo (a que o signatário efetivamente revisou/hasheou),
     NÃO pra versão nova que o próprio ato de assinar cria — de propósito, pra manter documentHash e
     a versão referenciada sempre consistentes entre si. signatureImage é um PNG em base64 data URL
     (TEXT no banco), gerado por useSignatureImage.js no frontend
+  → signatoryDocumentType/Number: só preenchidos quando Document.requireSignatoryDocument é true pro
+    documento desse signatário (validado em SignatoryService.signDocument, 400 se faltar). É EVIDÊNCIA
+    ADICIONAL gravada junto com a assinatura, igual documentHash/ipAddress/userAgent — não é uma
+    verificação de autenticidade real (sem dígito verificador de CPF, sem checar se o documento é
+    genuíno), consistente com o resto do projeto ser uma "assinatura eletrônica simples" (ver About.jsx)
 ```
 
 ## Autenticação
@@ -98,14 +128,14 @@ Signature (id, signatoryId, documentVersionId, signatureImage, signatureType, do
 
 1. Upload de PDF → `POST /documents` (autenticado) → cria `Document` + `DocumentVersion` v1
 2. Em background (sem `await`, não bloqueia a resposta): gera resumo via IA (`generateDocumentSummary`) E detecta posição sugerida de assinatura (`detectSignaturePosition`, heurística por regex procurando "assinatura", "local e data", linhas de sublinhado, etc. — sem IA, é rápido e determinístico; fallback = terço inferior da última página). Esse resumo também pode ser gerado sob demanda depois, via `GET /documents/:id/resume` (usado em `DocumentToSignDetail.jsx`)
-3. `POST /documents/:id/signatories` → adiciona signatários (nome + email). Se o email bater com o do dono logado, `Signatory.userId` é vinculado automaticamente (`isSelf: true` na resposta)
+3. `POST /documents/:id/signatories` → adiciona signatários (nome + email). Se o email bater com o do dono logado, `Signatory.userId` é vinculado automaticamente (`isSelf: true` na resposta). O dono pode marcar o checkbox "Exigir documento de identificação" (`requireDocument` no body) — liga `Document.requireSignatoryDocument` pra todos os signatários deste documento (ver "Modelo de dados")
 4. Signatário que é o próprio dono → em `MyDocuments.jsx` cai em `/documents/to-sign/:token` (`DocumentToSignDetail.jsx`, detalhe + resumo IA) → botão leva para `/sign/:token` (rota protegida, usa `SignScreen.jsx`)
 5. Signatário externo → recebe e-mail (via Resend) com link `/assinar/:token` (rota pública, `PublicSign.jsx` — tudo numa página só, sem tela de detalhe antes)
-6. Na tela de assinar (`SignScreen.jsx`/`PublicSign.jsx`): um card de instrução ("Clique no lugar do documento onde você quer colocar sua assinatura...") fica acima do picker, explicando a interação antes do usuário tentar. Campo de nome pré-preenchido com `data.signatory.name` (editável) alimenta `useSignatureImage.js`, que gera uma assinatura em PNG (fonte cursiva "Dancing Script", num `<canvas>` fora do DOM). `PdfPositionPicker.jsx` (que compõe o `PdfViewer.jsx` genérico) mostra essa imagem já posicionada na sugestão heurística — dá pra navegar entre páginas e tocar no documento pra escolher outro ponto, e a prévia é a imagem REAL (não um pin genérico), centralizada no ponto clicado. É preciso marcar o checkbox "Confirmo minha assinatura e a posição selecionada" pra habilitar o botão de assinar — qualquer edição no nome OU novo clique no documento desmarca essa confirmação de novo. O botão dispara `POST /sign/:token` com `{ signatureType: 'TYPED', signatureImage, position }` — a imagem é OBRIGATÓRIA (backend rejeita com 400 se faltar)
-7. Backend (`signDocument` em `SignatoryService.js`, tudo dentro de uma `sequelize.transaction` com `lock: t.LOCK.UPDATE` na linha do `Document`): calcula o hash SHA-256 do PDF PRÉ-carimbo, separa as páginas de "conteúdo real" do certificado de assinaturas de uma rodada anterior (se houver, via `PdfStampService.stripTrailingPages` + `Document.contentPageCount`), chama `PdfStampService.stampSignatureImage` (pdf-lib: `embedPng` + `drawImage` centralizado no ponto clicado, largura = 28% da largura da página — `STAMP_WIDTH_RATIO`, tem que bater com o `width: "28%"` da prévia no frontend) só nas páginas de conteúdo, e então `PdfStampService.appendSignatureCertificate` monta e anexa o(s) certificado(s) atualizado(s) — ver bloco abaixo. Salva o resultado como uma **nova `DocumentVersion`** (`storageService.saveVersionFile`), cria o registro `Signature` (apontando pra versão pré-carimbo — ver "Modelo de dados"), atualiza `Document.currentVersionId` pra nova versão, e por fim `Signatory.status = SIGNED`. Se o carimbo/certificado falhar, nada disso é persistido (erro real, 5xx) — diferente de IA/e-mail, aqui não existe "falha silenciosa"
+6. Na tela de assinar (`SignScreen.jsx`/`PublicSign.jsx`): um card de instrução ("Clique no lugar do documento onde você quer colocar sua assinatura...") fica acima do picker, explicando a interação antes do usuário tentar. Campo de nome pré-preenchido com `data.signatory.name` (editável) alimenta `useSignatureImage.js`, que gera uma assinatura em PNG (fonte cursiva "Dancing Script", num `<canvas>` fora do DOM). Quando `data.document.requireSignatoryDocument` vem true, aparece também um campo de documento de identificação (seletor CPF/RG/Outro + número, `formatCPF` de `utils/formatDocument.js` formata automaticamente quando é CPF) — o botão de assinar fica desabilitado até ele estar preenchido, independente do checkbox de confirmação abaixo. `PdfPositionPicker.jsx` (que compõe o `PdfViewer.jsx` genérico) mostra a assinatura já posicionada na sugestão heurística — dá pra navegar entre páginas e tocar no documento pra escolher outro ponto, e a prévia é a imagem REAL (não um pin genérico), centralizada no ponto clicado. É preciso marcar o checkbox "Confirmo minha assinatura e a posição selecionada" pra habilitar o botão de assinar — qualquer edição no nome OU novo clique no documento desmarca essa confirmação de novo (editar o documento de identificação NÃO desmarca, já que não afeta a imagem/posição da assinatura). O botão dispara `POST /sign/:token` com `{ signatureType: 'TYPED', signatureImage, position, signatoryDocumentType, signatoryDocumentNumber }` — a imagem é OBRIGATÓRIA (backend rejeita com 400 se faltar), os dois últimos só quando o documento exige. Ao terminar (step "done"), `PublicSign.jsx` mostra um botão "Ir para o início" (`navigate('/')`); `SignScreen.jsx` mostra "Ver meus documentos" (`navigate('/documents')`) — telas equivalentes, CTAs diferentes porque uma é pública e a outra já é um usuário logado
+7. Backend (`signDocument` em `SignatoryService.js`, tudo dentro de uma `sequelize.transaction` com `lock: t.LOCK.UPDATE` na linha do `Document`): valida o documento de identificação primeiro se `Document.requireSignatoryDocument` (400 se faltar ou tipo inválido), calcula o hash SHA-256 do PDF PRÉ-carimbo, separa as páginas de "conteúdo real" do certificado de assinaturas de uma rodada anterior (se houver, via `PdfStampService.stripTrailingPages` + `Document.contentPageCount`), chama `PdfStampService.stampSignatureImage` (pdf-lib: `embedPng` + `drawImage` centralizado no ponto clicado, largura = 28% da largura da página — `STAMP_WIDTH_RATIO`, tem que bater com o `width: "28%"` da prévia no frontend) só nas páginas de conteúdo, e então `PdfStampService.appendSignatureCertificate` monta e anexa o(s) certificado(s) atualizado(s) — ver bloco abaixo. Salva o resultado como uma **nova `DocumentVersion`** (`storageService.saveVersionFile`), cria o registro `Signature` (apontando pra versão pré-carimbo — ver "Modelo de dados"), atualiza `Document.currentVersionId` pra nova versão, e por fim `Signatory.status = SIGNED`. Se o carimbo/certificado falhar, nada disso é persistido (erro real, 5xx) — diferente de IA/e-mail, aqui não existe "falha silenciosa"
 8. Quando todos os signatários assinaram → `Document.status = COMPLETED` automaticamente
 9. Listagem em `MyDocuments.jsx` tem 3 abas: "Meus documentos" e "Documentos para assinar" (ambas excluem documentos `COMPLETED` por padrão) e "Finalizados" (`GET /documents/completed`, unifica documentos dos quais o usuário é dono com documentos em que é signatário, deduplicando por id e priorizando `role: 'owner'` em caso de sobreposição)
-10. Certificado de assinaturas (`PdfStampService.appendSignatureCertificate`): a partir da 1ª assinatura, cada nova assinatura REGENERA (não empilha) uma página de certificado no final do PDF, listando TODOS os signatários confirmados até aquele momento — nome, e-mail, data/hora (`pt-BR`, fuso America/Sao_Paulo), tipo de assinatura, IP, uma miniatura da assinatura, e o `documentHash` (SHA-256) daquele signatário especificamente, que serve de prova de integridade. Pagina automaticamente em "(continuação)" se não couber numa página só. Documento sem NENHUMA assinatura não ganha certificado algum. `DocumentDetail.jsx` tem um botão "Baixar documento" que baixa a `currentVersion` (já com certificado, se houver)
+10. Certificado de assinaturas (`PdfStampService.appendSignatureCertificate`): a partir da 1ª assinatura, cada nova assinatura REGENERA (não empilha) uma página de certificado no final do PDF, listando TODOS os signatários confirmados até aquele momento — nome, e-mail, data/hora (`pt-BR`, fuso America/Sao_Paulo), tipo de assinatura, IP, uma miniatura da assinatura, o `documentHash` (SHA-256) daquele signatário especificamente (prova de integridade), e a linha "Documento apresentado: CPF: 000.000.000-00" quando `signatoryDocumentNumber` existe pra aquela assinatura. Pagina automaticamente em "(continuação)" se não couber numa página só. Documento sem NENHUMA assinatura não ganha certificado algum. `DocumentDetail.jsx` tem um botão "Baixar documento" que baixa a `currentVersion` (já com certificado, se houver)
 
 ## Convenções que sempre seguir
 
@@ -120,6 +150,15 @@ Signature (id, signatoryId, documentVersionId, signatureImage, signatureType, do
 - Paleta visual fixa: fundo `#0b0b12`, accent `#5b6af0` → `#7c5cf6` (gradiente), bordas `rgba(255,255,255,0.07)`
 - Toda página usa `AnimatePresence` com slide transition (direção muda conforme `PUSH` vs `POP` do React Router)
 - Falhas de e-mail/IA NUNCA devem quebrar o fluxo principal (try/catch silencioso com log, não propaga erro)
+- A maioria das telas é mobile-first, coluna única centralizada (`max-w-md`/`max-w-lg` + `overflow-y-auto`,
+  rola se precisar). `Home.jsx` é a exceção de propósito: landing page de verdade, duas colunas a partir
+  do `lg:` (texto + ilustração do documento assinado, ilustração escondida — `hidden lg:flex` — no
+  mobile). Ela e as telas de auth (`Login.jsx`/`SignUp.jsx`) foram ajustadas pra CABER sem scroll em
+  laptops comuns (1366x768, 1280x720) e ficar mais espaçosas em desktop de verdade: como o Tailwind só
+  tem breakpoint de LARGURA (não de altura), o truque usado foi tratar o breakpoint `2xl` (≥1536px) como
+  proxy de "tela grande o bastante pra também ser alta" — títulos/paddings maiores só a partir do `2xl`,
+  ficam mais compactos entre `lg` e `2xl` (cobre o caso comum de notebook 1366-1440 de largura mas só
+  ~768-900 de altura). Se mexer nessas telas, testar nessas duas resoluções antes de mexer em espaçamento
 
 ## Bibliotecas com pegadinhas conhecidas
 
@@ -161,16 +200,19 @@ Signature (id, signatoryId, documentVersionId, signatureImage, signatureType, do
 ## Pendências conhecidas (não implementadas ainda)
 
 - Verificação de domínio próprio no Resend (hoje só envia pro email da conta sandbox)
-- Rate limiting / expiração de `accessToken` dos signatários
 - Fine-tuning ou upgrade de modelo Ollama se qualidade do resumo/posição não for suficiente
-- O lock de linha em `signDocument` (`lock: t.LOCK.UPDATE` no `Document`) serializa assinaturas
-  concorrentes NO MESMO documento (evita colisão de `version_number`), mas não faz nada por rate
-  limiting/replay do `accessToken` em si — continua coberto pelo item acima
-- `DocumentVersion.pageCount` só é populado pras versões criadas a partir da assinatura (via
-  `PdfStampService`); a v1 de upload e qualquer versão anterior a essa mudança ficam com `pageCount:
-  null` pra sempre — sem backfill
 - O picker de posição (`PdfPositionPicker.jsx`) deixa clicar em QUALQUER página do PDF, inclusive numa
   página de certificado de assinatura já anexada por uma assinatura anterior (2º signatário em diante).
   O backend se protege disso (clampa pra última página de CONTEÚDO se o `position.page` clicado cair
   fora do `contentPageCount`), mas não é a UX ideal — o certo seria o frontend nem deixar escolher essas
   páginas. Não implementado ainda
+- `POST /auth/register` (`AuthController.register`) NÃO loga o usuário automaticamente (não seta o
+  cookie — só `login` faz isso). `SignUp.jsx` chama `navigate('/upload')` logo após o cadastro dar certo,
+  mas como não há sessão ainda, `ProtectedRoute` manda de volta pra Home. Na prática só funciona porque o
+  usuário loga manualmente depois — descoberto incidentalmente, não corrigido ainda (o conserto óbvio é
+  o `register` já logar/setar o cookie, igual `login` faz, ou o `SignUp.jsx` chamar `login()` internamente
+  logo após o cadastro)
+- `Document.requireSignatoryDocument`, uma vez ligado (true), não tem como voltar a false pela UI —
+  `addSignatoriesToDocument` só liga, nunca desliga. Não é um problema hoje porque não existe fluxo de
+  "editar signatários depois de criados", mas se esse fluxo for adicionado, lembrar de decidir se
+  desligar deve ser permitido

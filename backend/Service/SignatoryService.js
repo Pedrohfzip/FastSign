@@ -6,6 +6,27 @@ import { sendSignatureInvite } from './EmailService.js';
 import { stampSignatureImage, getPdfPageCount, stripTrailingPages, appendSignatureCertificate } from './PdfStampService.js';
 const { Document, DocumentVersion, Signatory, Signature, User, sequelize } = db;
 
+// Prazo de validade do link de assinatura (/assinar/:accessToken e /sign/:accessToken),
+// contado a partir da criação do Signatory. Passado esse prazo, o token para de
+// funcionar em qualquer rota (consulta, arquivo ou assinatura) mesmo que o
+// signatário ainda esteja PENDING — mitiga um link antigo vazado/esquecido em algum
+// lugar (e-mail encaminhado, histórico de navegador) continuar válido indefinidamente.
+export const SIGNATORY_TOKEN_TTL_DAYS = 7;
+
+function tokenExpiryDate() {
+    return new Date(Date.now() + SIGNATORY_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+}
+
+// Checagem única, reaproveitada em toda rota que recebe um accessToken — token sem
+// `tokenExpiresAt` (signatário criado antes desta feature) nunca expira.
+function assertTokenNotExpired(signatory) {
+    if (signatory.tokenExpiresAt && new Date(signatory.tokenExpiresAt).getTime() < Date.now()) {
+        const err = new Error('Este link de assinatura expirou. Peça ao remetente para reenviar o convite.');
+        err.statusCode = 410;
+        throw err;
+    }
+}
+
 export async function addSignatoriesToDocument(documentId, signatoriesData, requestingUserId, requireDocument = false) {
     const document = await Document.findByPk(documentId);
 
@@ -49,6 +70,7 @@ export async function addSignatoriesToDocument(documentId, signatoriesData, requ
                 accessToken: generateToken(),
                 status: 'PENDING',
                 userId: isSelf ? requestingUserId : null,
+                tokenExpiresAt: tokenExpiryDate(),
             });
 
             // Não envia e-mail pro próprio dono — ele já tem o CTA "Assinar agora" direto no app
@@ -113,6 +135,8 @@ export async function getSignatoryByToken(accessToken) {
         throw err;
     }
 
+    assertTokenNotExpired(signatory);
+
     return signatory;
 }
 
@@ -133,6 +157,8 @@ export async function getDocumentFileByToken(accessToken) {
         err.statusCode = 404;
         throw err;
     }
+
+    assertTokenNotExpired(signatory);
 
     const buffer = await storageService.readVersionFile(signatory.document.currentVersion.filePath);
 
@@ -163,6 +189,8 @@ export async function signDocument(
         err.statusCode = 404;
         throw err;
     }
+
+    assertTokenNotExpired(signatory);
 
     if (signatory.status !== 'PENDING') {
         const err = new Error('Este documento já foi assinado ou recusado por você.');
@@ -229,6 +257,7 @@ export async function signDocument(
                 err.statusCode = 409;
                 throw err;
             }
+            assertTokenNotExpired(freshSignatory);
 
             // hash do arquivo ANTES do carimbo — prova do que o signatário efetivamente revisou/assinou
             const preStampBuffer = await storageService.readVersionFile(currentVersion.filePath);
