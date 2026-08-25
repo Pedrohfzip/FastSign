@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "framer-motion";
 import { User, Mail, IdCard, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
-import { registerUser } from "../api/loginRoute"; // função de registro de usuário (ainda não implementada)
+import { registerUser } from "../api/loginRoute";
+import { useAuth } from "../context/AuthContext";
 import { formatCPF } from "../utils/formatDocument";
 const ACCENT = "#5b6af0";
 const ACCENT_SOFT = "rgba(91,106,240,0.12)";
@@ -16,6 +17,7 @@ function isValidEmail(email) {
 
 export default function SignUp() {
     const navigate = useNavigate();
+    const { setUser } = useAuth();
 
     const [form, setForm] = useState({
         name: "",
@@ -61,15 +63,17 @@ export default function SignUp() {
 
         setSubmitting(true);
         try {
-            await registerUser({
+            // O backend já loga a conta na hora (seta o cookie httpOnly) — atualiza o
+            // AuthContext direto com o user retornado, sem precisar de um login() à parte.
+            const { user } = await registerUser({
                 name: form.name,
                 email: form.email,
                 cpf: form.cpf.replace(/\D/g, ""),
                 password: form.password,
             });
-            await new Promise((resolve) => setTimeout(resolve, 1000)); // simulação temporária
+            setUser(user);
 
-            navigate("/upload"); // ajuste o destino pós-cadastro conforme seu fluxo real
+            navigate("/upload");
         } catch (err) {
             const message = err?.response?.data?.error || err?.message || "Erro ao criar conta. Tente novamente.";
             setApiError(message);

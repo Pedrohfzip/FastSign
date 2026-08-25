@@ -20,6 +20,11 @@ const SignController = {
                     createdAt: signatory.document.createdAt,
                     ownerName: signatory.document.owner?.name || null,
                     requireSignatoryDocument: signatory.document.requireSignatoryDocument,
+                    // null até a 1ª assinatura (documento ainda não tem certificado anexado —
+                    // ver PdfStampService.appendSignatureCertificate). O frontend usa isso pra
+                    // não deixar escolher posição de assinatura numa página de certificado de
+                    // uma rodada anterior (ver PdfPositionPicker.jsx `maxPage`).
+                    contentPageCount: signatory.document.contentPageCount,
                     suggestedPosition: {
                         page: signatory.document.suggestedPage || 1,
                         x: signatory.document.suggestedX ?? 0.5,

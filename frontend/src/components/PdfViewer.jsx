@@ -5,6 +5,10 @@
 // (renderizado sobre o canvas) + `onCanvasClick` (clique/toque no documento) +
 // `onPageChange` (avisa a página atual pra quem estiver controlando o overlay).
 // Sem esses callbacks, o componente já funciona só-leitura por padrão.
+// `maxPage` (opcional) trunca a navegação nas primeiras N páginas do documento —
+// é um limite genérico de intervalo, não lógica de assinatura em si (quem decide
+// o valor, ex. `contentPageCount` pra não deixar navegar até uma página de
+// certificado já anexada, é quem usa o componente — ver PdfPositionPicker.jsx).
 import React, { useState, useEffect, useRef } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -18,7 +22,7 @@ function clamp01(value) {
     return Math.min(Math.max(value, 0), 1);
 }
 
-export default function PdfViewer({ pdfUrl, initialPage, onPageChange, onCanvasClick, children }) {
+export default function PdfViewer({ pdfUrl, initialPage, maxPage, onPageChange, onCanvasClick, children }) {
     const [pdfDoc, setPdfDoc] = useState(null);
     const [numPages, setNumPages] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
@@ -43,10 +47,12 @@ export default function PdfViewer({ pdfUrl, initialPage, onPageChange, onCanvasC
 
                 setPdfDoc(pdf);
                 setNumPages(pdf.numPages);
-                // Começa na página sugerida (ou na última, se a sugestão vier fora do intervalo)
-                const startPage = initialPage && initialPage >= 1 && initialPage <= pdf.numPages
+                // Começa na página sugerida (ou na última navegável, se a sugestão vier fora
+                // do intervalo — considerando o teto de `maxPage`, quando houver).
+                const effectiveMax = maxPage ? Math.min(maxPage, pdf.numPages) : pdf.numPages;
+                const startPage = initialPage && initialPage >= 1 && initialPage <= effectiveMax
                     ? initialPage
-                    : pdf.numPages;
+                    : effectiveMax;
                 setCurrentPage(startPage);
             } catch (err) {
                 console.error('[PdfViewer.load]', err);
@@ -120,8 +126,13 @@ export default function PdfViewer({ pdfUrl, initialPage, onPageChange, onCanvasC
         onCanvasClick({ page: currentPage, x, y });
     };
 
+    // Teto de navegação — quando `maxPage` vem preenchido, a página seguinte nunca
+    // avança pra além dele, mesmo que o PDF em si tenha mais páginas depois (ex: um
+    // certificado de assinatura já anexado por uma rodada anterior).
+    const effectiveMaxPage = maxPage ? Math.min(maxPage, numPages) : numPages;
+
     const goToPage = (delta) => {
-        setCurrentPage((prev) => Math.min(Math.max(prev + delta, 1), numPages));
+        setCurrentPage((prev) => Math.min(Math.max(prev + delta, 1), effectiveMaxPage));
     };
 
     return (
@@ -158,7 +169,7 @@ export default function PdfViewer({ pdfUrl, initialPage, onPageChange, onCanvasC
                 )}
             </div>
 
-            {!loading && !error && numPages > 1 && (
+            {!loading && !error && effectiveMaxPage > 1 && (
                 <div className="flex items-center justify-center gap-3">
                     <button
                         type="button"
@@ -171,12 +182,12 @@ export default function PdfViewer({ pdfUrl, initialPage, onPageChange, onCanvasC
                         <ChevronLeft size={14} />
                     </button>
                     <span className="text-xs text-gray-500">
-                        Página {currentPage} de {numPages}
+                        Página {currentPage} de {effectiveMaxPage}
                     </span>
                     <button
                         type="button"
                         onClick={() => goToPage(1)}
-                        disabled={currentPage >= numPages}
+                        disabled={currentPage >= effectiveMaxPage}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-white transition-colors disabled:opacity-30"
                         style={{ border: `1px solid ${BORDER_SOFT}` }}
                         title="Próxima página"

@@ -6,6 +6,16 @@ const { User } = db;
 
 const SALT_ROUNDS = 10;
 
+// Compartilhado entre registerUser e loginUser — os dois terminam num usuário já
+// autenticado (cookie setado pelo controller), então os dois precisam do mesmo JWT.
+function signAuthToken(user) {
+    return jwt.sign(
+        { userId: user.id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+}
+
 export async function registerUser({ name, email, cpf, password }) {
     const cpfDigits = cpf.replace(/\D/g, '');
 
@@ -32,12 +42,16 @@ export async function registerUser({ name, email, cpf, password }) {
         passwordHash,
     });
 
-    // nunca retornar o hash da senha pro cliente
+    // Já retorna logado (token + user), igual loginUser — o cadastro deixa a conta pronta
+    // pra usar na hora, sem exigir um login manual logo em seguida (ver AuthController.register).
     return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        cpf: user.cpf,
+        token: signAuthToken(user),
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            cpf: user.cpf,
+        },
     };
 }
 
@@ -62,14 +76,8 @@ export async function loginUser({ email, password }) {
         throw err;
     }
 
-    const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
-
     return {
-        token,
+        token: signAuthToken(user),
         user: {
             id: user.id,
             name: user.name,

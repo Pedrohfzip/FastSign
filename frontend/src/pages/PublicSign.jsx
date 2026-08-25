@@ -360,6 +360,7 @@ export default function PublicSign() {
                                         onPositionChange={handlePositionChange}
                                         disabled={signing}
                                         signatureImage={signatureImage}
+                                        maxPage={data?.document?.contentPageCount}
                                     />
                                 </div>
 

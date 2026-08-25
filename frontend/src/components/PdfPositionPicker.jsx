@@ -3,7 +3,12 @@
 // overlay do marcador. Renderização do PDF e navegação de página ficam por
 // conta do PdfViewer; aqui só cuidamos do que é específico do fluxo de assinatura.
 // Começa pré-posicionado na sugestão vinda do backend (heurística de palavras-
-// chave), mas o usuário pode sobrescrever a qualquer momento.
+// chave), mas o usuário pode sobrescrever a qualquer momento. `maxPage` (quando
+// vem preenchido — ver `document.contentPageCount` em SignScreen.jsx/PublicSign.jsx)
+// trunca a navegação do PdfViewer antes de qualquer página de certificado de
+// assinatura já anexada por uma rodada anterior, então nem dá pra chegar nela
+// pra clicar — o backend (SignatoryService.signDocument) já clampava a posição
+// nesse caso, isso aqui só evita a UX confusa de deixar escolher ali primeiro.
 import React, { useState, useEffect } from "react";
 import { PenLine } from "lucide-react";
 import PdfViewer from "./PdfViewer";
@@ -15,7 +20,7 @@ const ACCENT = "#5b6af0";
 // final no PDF ficarem do mesmo tamanho relativo à página.
 const STAMP_WIDTH_PERCENT = "28%";
 
-export default function PdfPositionPicker({ file, position, onPositionChange, disabled, signatureImage }) {
+export default function PdfPositionPicker({ file, position, onPositionChange, disabled, signatureImage, maxPage }) {
     // O PdfViewer trabalha com URL, não com o Blob em si — gera uma blob: URL
     // pro arquivo recebido e revoga a anterior sempre que o arquivo mudar/desmontar.
     const [fileUrl, setFileUrl] = useState(null);
@@ -40,6 +45,7 @@ export default function PdfPositionPicker({ file, position, onPositionChange, di
             <PdfViewer
                 pdfUrl={fileUrl}
                 initialPage={position?.page}
+                maxPage={maxPage}
                 onPageChange={setCurrentPage}
                 onCanvasClick={disabled ? undefined : onPositionChange}
             >

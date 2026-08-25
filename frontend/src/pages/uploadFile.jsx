@@ -7,6 +7,7 @@ import { Upload, FileText, X, CheckCircle2, AlertCircle, PenLine, Loader2, Plus,
 import { uploadDocument } from "../api/fileRoute";
 import { useNavigate } from 'react-router'
 import PdfViewer from "../components/PdfViewer";
+import ProcessCarousel from "../components/ProcessCarousel";
 
 // Só PDF, igual ao input original (o backend só sabe processar PDF)
 const ACCEPTED = [".pdf"];
@@ -164,6 +165,24 @@ export default function UploadScreen({ onContinue }) {
                     {/* O passo a passo do fluxo (Enviar → Signatários → Assinar) agora é
                         renderizado globalmente em routes/index.jsx, fora do slide de página —
                         fica persistente ao navegar entre as telas em vez de remontar aqui. */}
+
+                    {/* Carrossel ilustrativo do processo (Enviar → Signatários → Assinar) — puramente
+                        decorativo, toca em loop sozinho; ocupa o espaço vazio acima da dropzone
+                        enquanto ela existe, e some junto com ela assim que o primeiro arquivo entra. */}
+                    <AnimatePresence>
+                        {!hasItems && (
+                            <motion.div
+                                key="process-carousel"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="shrink-0 overflow-hidden"
+                            >
+                                <ProcessCarousel />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     {/* Disclaimer do tipo/limite de arquivo — some junto com a dropzone assim que
                         o primeiro arquivo é adicionado, já que deixa de ser relevante. */}

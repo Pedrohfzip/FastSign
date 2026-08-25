@@ -262,6 +262,7 @@ export default function SignScreen() {
                                     onPositionChange={handlePositionChange}
                                     disabled={signing}
                                     signatureImage={signatureImage}
+                                    maxPage={data?.document?.contentPageCount}
                                 />
                             </div>
 

@@ -20,8 +20,12 @@ const AuthController = {
                 return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
             }
 
-            const newUser = await registerUser({ name, email, cpf, password });
-            res.status(201).json(newUser);
+            const { token, user } = await registerUser({ name, email, cpf, password });
+
+            // Cadastro já loga a conta na hora — mesmo cookie que login() seta, senão
+            // SignUp.jsx navegaria pra uma rota protegida sem sessão nenhuma ainda.
+            res.cookie('token', token, COOKIE_OPTIONS);
+            res.status(201).json({ user });
         } catch (error) {
             console.error('Error registering user:', error);
             res.status(error.status || 500).json({ error: error.message || 'Erro ao registrar usuário.' });

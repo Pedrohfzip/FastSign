@@ -7,7 +7,12 @@ Plataforma de assinatura eletrônica de documentos (PDF). Projeto pessoal/portf�
 - **Frontend**: React + Vite, React Router v7 (`react-router`, não `react-router-dom`), Framer Motion, Tailwind, lucide-react
 - **Backend**: Node.js ESM (`"type": "module"` no package.json), Express, Sequelize + PostgreSQL
 - **Infra**: Docker Compose (serviços: `fastsign-frontend`, `fastsign-backend`, `fastsign-db`, `fastsign-ollama`)
-- **IA local**: Ollama rodando `llama3.2:3b`, com GPU NVIDIA passthrough configurado (RTX 3050)
+- **IA local**: Ollama rodando `qwen2.5:7b` (upgrade do `llama3.2:3b` original, resumos mais coerentes),
+  com GPU NVIDIA passthrough configurado (RTX 3050, 8GB — o modelo em Q4_K_M ocupa ~4.7GB de VRAM). Como
+  a GPU é compartilhada com o resto do Windows (jogos, browser, etc.), VRAM/uso de GPU concorrente pode
+  deixar a geração drasticamente mais lenta (observado: de <30ms/token pra ~40s/token) — não é bug do
+  FastSign, é contenção de GPU real. `llama3.2:3b` continua baixado no volume `ollama_data` como opção
+  mais leve se precisar
 - **E-mail**: Resend (modo sandbox — só envia pro e-mail cadastrado na conta Resend até verificar domínio próprio)
 
 ## Estrutura de pastas
@@ -41,9 +46,13 @@ frontend/src/
                          mostrar menu/Entrar ali — esse `return null` vem DEPOIS de todos os hooks, pra
                          não violar as Rules of Hooks ao navegar de/pra essa rota), ProtectedRoute.jsx,
                          RootGate.jsx, PdfViewer.jsx (visualizador genérico de PDF via pdfjs-dist, com
-                         paginação por botões — sem NENHUMA lógica de assinatura), PdfPositionPicker.jsx
+                         paginação por botões — sem NENHUMA lógica de assinatura; aceita um `maxPage`
+                         opcional que trunca a navegação nas primeiras N páginas — genérico, não é
+                         assinatura em si, quem decide o valor é quem usa o componente), PdfPositionPicker.jsx
                          (compõe o PdfViewer + a lógica de escolher/marcar onde a assinatura vai,
-                         incluindo a prévia WYSIWYG da imagem de assinatura gerada; usado em
+                         incluindo a prévia WYSIWYG da imagem de assinatura gerada; repassa seu próprio
+                         `maxPage` pro PdfViewer pra não deixar navegar até uma página de certificado de
+                         assinatura já anexada por uma rodada anterior — ver "Fluxo de assinatura"; usado em
                          SignScreen.jsx e PublicSign.jsx)
   hooks/               → useSignatureImage.js (gera a imagem de assinatura — PNG data URL — a partir
                          de um nome, num <canvas> fora do DOM, usando a fonte "Dancing Script")
@@ -123,6 +132,11 @@ Signature (id, signatoryId, documentVersionId, signatureImage, signatureType, do
 - CORS no backend precisa de `credentials: true` E `origin` explícito (não pode ser `*` quando `credentials: true`)
 - `RootGate.jsx`: se logado → redireciona `/` para `/upload`; se não → mostra Home
 - `ProtectedRoute.jsx`: bloqueia rotas que exigem login, redireciona pra `/`
+- `POST /auth/register` (`AuthController.register`) já loga o usuário na hora — seta o mesmo cookie
+  httpOnly que `login` seta (via `signAuthToken`, helper compartilhado em `AuthService.js`) e devolve
+  `{ user }`. `SignUp.jsx` chama `setUser(user)` do `AuthContext` direto com a resposta do cadastro (sem
+  round-trip extra pra `login()`) antes de `navigate('/upload')` — necessário porque `ProtectedRoute` lê
+  `isAuthenticated` do `AuthContext`, não faz uma checagem de sessão nova a cada navegação
 
 ## Fluxo de assinatura
 
@@ -131,7 +145,7 @@ Signature (id, signatoryId, documentVersionId, signatureImage, signatureType, do
 3. `POST /documents/:id/signatories` → adiciona signatários (nome + email). Se o email bater com o do dono logado, `Signatory.userId` é vinculado automaticamente (`isSelf: true` na resposta). O dono pode marcar o checkbox "Exigir documento de identificação" (`requireDocument` no body) — liga `Document.requireSignatoryDocument` pra todos os signatários deste documento (ver "Modelo de dados")
 4. Signatário que é o próprio dono → em `MyDocuments.jsx` cai em `/documents/to-sign/:token` (`DocumentToSignDetail.jsx`, detalhe + resumo IA) → botão leva para `/sign/:token` (rota protegida, usa `SignScreen.jsx`)
 5. Signatário externo → recebe e-mail (via Resend) com link `/assinar/:token` (rota pública, `PublicSign.jsx` — tudo numa página só, sem tela de detalhe antes)
-6. Na tela de assinar (`SignScreen.jsx`/`PublicSign.jsx`): um card de instrução ("Clique no lugar do documento onde você quer colocar sua assinatura...") fica acima do picker, explicando a interação antes do usuário tentar. Campo de nome pré-preenchido com `data.signatory.name` (editável) alimenta `useSignatureImage.js`, que gera uma assinatura em PNG (fonte cursiva "Dancing Script", num `<canvas>` fora do DOM). Quando `data.document.requireSignatoryDocument` vem true, aparece também um campo de documento de identificação (seletor CPF/RG/Outro + número, `formatCPF` de `utils/formatDocument.js` formata automaticamente quando é CPF) — o botão de assinar fica desabilitado até ele estar preenchido, independente do checkbox de confirmação abaixo. `PdfPositionPicker.jsx` (que compõe o `PdfViewer.jsx` genérico) mostra a assinatura já posicionada na sugestão heurística — dá pra navegar entre páginas e tocar no documento pra escolher outro ponto, e a prévia é a imagem REAL (não um pin genérico), centralizada no ponto clicado. É preciso marcar o checkbox "Confirmo minha assinatura e a posição selecionada" pra habilitar o botão de assinar — qualquer edição no nome OU novo clique no documento desmarca essa confirmação de novo (editar o documento de identificação NÃO desmarca, já que não afeta a imagem/posição da assinatura). O botão dispara `POST /sign/:token` com `{ signatureType: 'TYPED', signatureImage, position, signatoryDocumentType, signatoryDocumentNumber }` — a imagem é OBRIGATÓRIA (backend rejeita com 400 se faltar), os dois últimos só quando o documento exige. Ao terminar (step "done"), `PublicSign.jsx` mostra um botão "Ir para o início" (`navigate('/')`); `SignScreen.jsx` mostra "Ver meus documentos" (`navigate('/documents')`) — telas equivalentes, CTAs diferentes porque uma é pública e a outra já é um usuário logado
+6. Na tela de assinar (`SignScreen.jsx`/`PublicSign.jsx`): um card de instrução ("Clique no lugar do documento onde você quer colocar sua assinatura...") fica acima do picker, explicando a interação antes do usuário tentar. Campo de nome pré-preenchido com `data.signatory.name` (editável) alimenta `useSignatureImage.js`, que gera uma assinatura em PNG (fonte cursiva "Dancing Script", num `<canvas>` fora do DOM). Quando `data.document.requireSignatoryDocument` vem true, aparece também um campo de documento de identificação (seletor CPF/RG/Outro + número, `formatCPF` de `utils/formatDocument.js` formata automaticamente quando é CPF) — o botão de assinar fica desabilitado até ele estar preenchido, independente do checkbox de confirmação abaixo. `PdfPositionPicker.jsx` (que compõe o `PdfViewer.jsx` genérico) mostra a assinatura já posicionada na sugestão heurística — dá pra navegar entre páginas e tocar no documento pra escolher outro ponto, e a prévia é a imagem REAL (não um pin genérico), centralizada no ponto clicado. `GET /sign/:token` devolve `document.contentPageCount` (null até a 1ª assinatura), repassado como `maxPage` — a partir do 2º signatário, isso trunca a navegação do picker antes de qualquer página de certificado já anexada por uma rodada anterior, então nem dá pra chegar nela pra clicar (o backend já clampava a posição nesse caso — ver passo 7 — isso só evita a UX de deixar escolher ali primeiro). É preciso marcar o checkbox "Confirmo minha assinatura e a posição selecionada" pra habilitar o botão de assinar — qualquer edição no nome OU novo clique no documento desmarca essa confirmação de novo (editar o documento de identificação NÃO desmarca, já que não afeta a imagem/posição da assinatura). O botão dispara `POST /sign/:token` com `{ signatureType: 'TYPED', signatureImage, position, signatoryDocumentType, signatoryDocumentNumber }` — a imagem é OBRIGATÓRIA (backend rejeita com 400 se faltar), os dois últimos só quando o documento exige. Ao terminar (step "done"), `PublicSign.jsx` mostra um botão "Ir para o início" (`navigate('/')`); `SignScreen.jsx` mostra "Ver meus documentos" (`navigate('/documents')`) — telas equivalentes, CTAs diferentes porque uma é pública e a outra já é um usuário logado
 7. Backend (`signDocument` em `SignatoryService.js`, tudo dentro de uma `sequelize.transaction` com `lock: t.LOCK.UPDATE` na linha do `Document`): valida o documento de identificação primeiro se `Document.requireSignatoryDocument` (400 se faltar ou tipo inválido), calcula o hash SHA-256 do PDF PRÉ-carimbo, separa as páginas de "conteúdo real" do certificado de assinaturas de uma rodada anterior (se houver, via `PdfStampService.stripTrailingPages` + `Document.contentPageCount`), chama `PdfStampService.stampSignatureImage` (pdf-lib: `embedPng` + `drawImage` centralizado no ponto clicado, largura = 28% da largura da página — `STAMP_WIDTH_RATIO`, tem que bater com o `width: "28%"` da prévia no frontend) só nas páginas de conteúdo, e então `PdfStampService.appendSignatureCertificate` monta e anexa o(s) certificado(s) atualizado(s) — ver bloco abaixo. Salva o resultado como uma **nova `DocumentVersion`** (`storageService.saveVersionFile`), cria o registro `Signature` (apontando pra versão pré-carimbo — ver "Modelo de dados"), atualiza `Document.currentVersionId` pra nova versão, e por fim `Signatory.status = SIGNED`. Se o carimbo/certificado falhar, nada disso é persistido (erro real, 5xx) — diferente de IA/e-mail, aqui não existe "falha silenciosa"
 8. Quando todos os signatários assinaram → `Document.status = COMPLETED` automaticamente
 9. Listagem em `MyDocuments.jsx` tem 3 abas: "Meus documentos" e "Documentos para assinar" (ambas excluem documentos `COMPLETED` por padrão) e "Finalizados" (`GET /documents/completed`, unifica documentos dos quais o usuário é dono com documentos em que é signatário, deduplicando por id e priorizando `role: 'owner'` em caso de sobreposição)
@@ -200,18 +214,8 @@ Signature (id, signatoryId, documentVersionId, signatureImage, signatureType, do
 ## Pendências conhecidas (não implementadas ainda)
 
 - Verificação de domínio próprio no Resend (hoje só envia pro email da conta sandbox)
-- Fine-tuning ou upgrade de modelo Ollama se qualidade do resumo/posição não for suficiente
-- O picker de posição (`PdfPositionPicker.jsx`) deixa clicar em QUALQUER página do PDF, inclusive numa
-  página de certificado de assinatura já anexada por uma assinatura anterior (2º signatário em diante).
-  O backend se protege disso (clampa pra última página de CONTEÚDO se o `position.page` clicado cair
-  fora do `contentPageCount`), mas não é a UX ideal — o certo seria o frontend nem deixar escolher essas
-  páginas. Não implementado ainda
-- `POST /auth/register` (`AuthController.register`) NÃO loga o usuário automaticamente (não seta o
-  cookie — só `login` faz isso). `SignUp.jsx` chama `navigate('/upload')` logo após o cadastro dar certo,
-  mas como não há sessão ainda, `ProtectedRoute` manda de volta pra Home. Na prática só funciona porque o
-  usuário loga manualmente depois — descoberto incidentalmente, não corrigido ainda (o conserto óbvio é
-  o `register` já logar/setar o cookie, igual `login` faz, ou o `SignUp.jsx` chamar `login()` internamente
-  logo após o cadastro)
+- Fine-tuning de modelo Ollama, caso o upgrade pra `qwen2.5:7b` não seja suficiente no futuro (fine-tuning
+  em si não foi feito — exigiria montar dataset de documentos + resumos bons e infra de treino à parte)
 - `Document.requireSignatoryDocument`, uma vez ligado (true), não tem como voltar a false pela UI —
   `addSignatoriesToDocument` só liga, nunca desliga. Não é um problema hoje porque não existe fluxo de
   "editar signatários depois de criados", mas se esse fluxo for adicionado, lembrar de decidir se
