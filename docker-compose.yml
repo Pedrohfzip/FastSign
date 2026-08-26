@@ -1,75 +1,43 @@
-version: '3.8'
-
 services:
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: fastsign-backend
+    restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - DB_HOST=db
       - DB_PORT=5432
       - DB_NAME=fastsign
       - DB_USER=postgres
-      - DB_PASSWORD=123
-      - RESEND_API_KEY=re_3M5KGokj_F8BDNogWjvA9gUdZc58P3RRp
-      - EMAIL_FROM=FastSign <onboarding@resend.dev>
+      - DB_PASSWORD=TROQUE_POR_UMA_SENHA_FORTE
+    env_file:
+      - ./backend/.env.production
     volumes:
-      - ./backend:/app
-      - /app/node_modules
       - ./backend/storage:/app/storage
     depends_on:
       - db
     networks:
       - fastsign-network
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: fastsign-frontend
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    networks:
-      - fastsign-network
+
   db:
     image: postgres:15-alpine
     container_name: fastsign-db
-    ports:
-      - "5433:5432"
+    restart: unless-stopped
     environment:
       - POSTGRES_DB=fastsign
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=123
+      - POSTGRES_PASSWORD=TROQUE_POR_UMA_SENHA_FORTE
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - fastsign-network
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: fastsign-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - fastsign-network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
 volumes:
   postgres_data:
-  ollama_data:
 
 networks:
   fastsign-network:
