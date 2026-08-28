@@ -1,0 +1,54 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: fastsign-frontend-build
+    env_file:
+      - ./frontend/.env.production
+    volumes:
+      - ./frontend/dist:/app/dist
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fastsign-backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=fastsign
+      - DB_USER=postgres
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+    env_file:
+      - ./backend/.env.production
+    volumes:
+      - ./backend/storage:/app/storage
+    depends_on:
+      - db
+    networks:
+      - fastsign-network
+
+  db:
+    image: postgres:15-alpine
+    container_name: fastsign-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=fastsign
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fastsign-network
+
+volumes:
+  postgres_data:
+
+networks:
+  fastsign-network:
+    driver: bridge

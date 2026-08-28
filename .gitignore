@@ -2,3 +2,9 @@ backend/.env
 backend/.env.production
 frontend/.env
 frontend/.env.production
+backend/.env
+backend/.env.production
+frontend/.env
+frontend/.env.production
+backend/storage/
+.env
