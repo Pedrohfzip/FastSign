@@ -1,5 +1,5 @@
 import Router from 'express';
-import DocController from '../Controllers/DocController.js';
+import DocController from '../controllers/DocController.js';
 import { handleUpload } from '../middlewares/uploadMiddleware.js';
 import { requireAuth } from '../middlewares/authMiddleware.js';
 const docRouter = Router();
