@@ -1,9 +1,10 @@
 // Tela onde o dono do documento adiciona quem precisa assinar
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserPlus, X, Mail, User, ArrowRight, ArrowLeft, Loader2, Link2, Check, UserCheck, PenLine, ShieldCheck } from "lucide-react";
 import { addSignatories } from "../api/fileRoute";
+import { getSavedSignatories, deleteSavedSignatory } from "../api/savedSignatoryRoute";
 import { useAuth } from "../context/AuthContext";
 
 const ACCENT = "#5b6af0";
@@ -33,9 +34,29 @@ export default function AddSignatories() {
     const [submitting, setSubmitting] = useState(false);
     const [apiError, setApiError] = useState(null);
     const [createdLinks, setCreatedLinks] = useState(null);
+    const [savedContacts, setSavedContacts] = useState([]);
 
-    const addRow = () => {
-        setRows((prev) => [...prev, { id: nextId++, name: "", email: "" }]);
+    // Lista de contatos é só uma conveniência de UI — falha ao carregar não trava a
+    // tela, só deixa a seção de "contatos salvos" vazia (não aparece nada nesse caso).
+    useEffect(() => {
+        let cancelled = false;
+        getSavedSignatories()
+            .then((contacts) => { if (!cancelled) setSavedContacts(contacts); })
+            .catch(() => { /* silencioso, ver comentário acima */ });
+        return () => { cancelled = true; };
+    }, []);
+
+    // Contatos ainda não usados em nenhuma linha atual (por e-mail) — evita oferecer
+    // pra adicionar de novo um contato que já virou uma linha nesta mesma sessão.
+    const availableContacts = savedContacts.filter(
+        (c) => !rows.some((r) => r.email.trim().toLowerCase() === c.email.toLowerCase())
+    );
+
+    const addRow = (prefill) => {
+        setRows((prev) => [
+            ...prev,
+            { id: nextId++, name: prefill?.name || "", email: prefill?.email || "", saveContact: false },
+        ]);
     };
 
     const removeRow = (id) => {
@@ -45,6 +66,21 @@ export default function AddSignatories() {
     const updateRow = (id, field, value) => {
         setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
         setErrors((prev) => ({ ...prev, [id]: null }));
+    };
+
+    const toggleSaveContact = (id) => {
+        setRows((prev) => prev.map((r) => (r.id === id ? { ...r, saveContact: !r.saveContact } : r)));
+    };
+
+    const handleDeleteContact = async (contactId) => {
+        // Otimista: some da lista local na hora — é só uma lista de conveniência, se a
+        // chamada falhar o pior caso é o contato reaparecer depois de recarregar a tela.
+        setSavedContacts((prev) => prev.filter((c) => c.id !== contactId));
+        try {
+            await deleteSavedSignatory(contactId);
+        } catch {
+            // silencioso — não é um fluxo crítico
+        }
     };
 
     const validate = () => {
@@ -75,7 +111,7 @@ export default function AddSignatories() {
 
         setSubmitting(true);
         try {
-            const payload = rows.map(({ name, email }) => ({ name, email }));
+            const payload = rows.map(({ name, email, saveContact }) => ({ name, email, saveContact }));
 
             if (includeSelf && user) {
                 payload.push({ name: user.name, email: user.email, });
@@ -394,9 +430,57 @@ export default function AddSignatories() {
                                     {errors[row.id]?.email && (
                                         <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors[row.id].email}</p>
                                     )}
+
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleSaveContact(row.id)}
+                                        className="flex items-center gap-2 pl-1 pt-0.5 text-left w-fit"
+                                    >
+                                        <div
+                                            className="w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 transition-colors"
+                                            style={{
+                                                background: row.saveContact ? ACCENT : "transparent",
+                                                border: `1.5px solid ${row.saveContact ? ACCENT : "rgba(255,255,255,0.25)"}`,
+                                            }}
+                                        >
+                                            {row.saveContact && <Check size={9} color="#fff" strokeWidth={3} />}
+                                        </div>
+                                        <span className="text-xs text-gray-500">Salvar como contato para reutilizar depois</span>
+                                    </button>
                                 </motion.div>
                             ))}
                         </AnimatePresence>
+
+                        {availableContacts.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                                <span className="text-xs text-gray-500 px-1">Seus contatos salvos</span>
+                                <div className="flex flex-wrap gap-2">
+                                    {availableContacts.map((contact) => (
+                                        <div
+                                            key={contact.id}
+                                            className="flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-full text-xs"
+                                            style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => addRow(contact)}
+                                                className="text-gray-300 hover:text-white transition-colors"
+                                            >
+                                                {contact.name}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteContact(contact.id)}
+                                                aria-label={`Remover ${contact.name} dos contatos salvos`}
+                                                className="text-gray-600 hover:text-red-400 transition-colors p-0.5"
+                                            >
+                                                <X size={11} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {rows.length === 0 && includeSelf && (
                             <p className="text-xs text-gray-500 text-center -mt-1">
@@ -406,7 +490,7 @@ export default function AddSignatories() {
 
                         <button
                             type="button"
-                            onClick={addRow}
+                            onClick={() => addRow()}
                             className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-colors"
                             style={{ border: `1px dashed ${BORDER_SOFT}` }}
                         >

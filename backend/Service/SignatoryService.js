@@ -1,9 +1,11 @@
 import crypto from 'crypto';
+import { Op } from 'sequelize';
 import db from '../database/models/index.js';
 import storageService from './StorageService.js';
 import { generateToken } from '../utils/generateToken.js';
 import { sendSignatureInvite } from './EmailService.js';
 import { stampSignatureImage, getPdfPageCount, stripTrailingPages, appendSignatureCertificate } from './PdfStampService.js';
+import { upsertSavedSignatory } from './SavedSignatoryService.js';
 const { Document, DocumentVersion, Signatory, Signature, User, sequelize } = db;
 
 // Prazo de validade do link de assinatura (/assinar/:accessToken e /sign/:accessToken),
@@ -59,9 +61,25 @@ export async function addSignatoriesToDocument(documentId, signatoriesData, requ
     }
 
     const created = await Promise.all(
-        signatoriesData.map(async ({ name, email }) => {
+        signatoriesData.map(async ({ name, email, saveContact }) => {
+            const normalizedEmail = email.trim().toLowerCase();
             const isSelf =
-                requestingUser && email.trim().toLowerCase() === requestingUser.email.trim().toLowerCase();
+                requestingUser && normalizedEmail === requestingUser.email.trim().toLowerCase();
+
+            // Se o e-mail bater com o de outro usuário já cadastrado no sistema (não o dono),
+            // vincula o signatário a essa conta — assim o documento passa a aparecer pra ele
+            // na aba "Documentos para assinar" (listPendingSignaturesForUser filtra por userId).
+            // iLike sem wildcard = igualdade case-insensitive, já que o e-mail é salvo como veio
+            // no cadastro e o Postgres compara STRING/varchar com case-sensitivity por padrão.
+            let linkedUserId = null;
+            if (isSelf) {
+                linkedUserId = requestingUserId;
+            } else {
+                const matchedUser = await User.findOne({
+                    where: { email: { [Op.iLike]: normalizedEmail } },
+                });
+                linkedUserId = matchedUser ? matchedUser.id : null;
+            }
 
             const signatory = await Signatory.create({
                 documentId,
@@ -69,11 +87,13 @@ export async function addSignatoriesToDocument(documentId, signatoriesData, requ
                 email,
                 accessToken: generateToken(),
                 status: 'PENDING',
-                userId: isSelf ? requestingUserId : null,
+                userId: linkedUserId,
                 tokenExpiresAt: tokenExpiryDate(),
             });
 
-            // Não envia e-mail pro próprio dono — ele já tem o CTA "Assinar agora" direto no app
+            // Não envia e-mail pro próprio dono — ele já tem o CTA "Assinar agora" direto no app.
+            // Um signatário vinculado a OUTRO usuário cadastrado ainda recebe o convite normalmente:
+            // o vínculo só faz o documento aparecer na aba dele, o e-mail continua sendo o aviso.
             if (!isSelf) {
                 const signLink = `${frontendUrl}/assinar/${signatory.accessToken}`;
                 await sendSignatureInvite({
@@ -82,6 +102,17 @@ export async function addSignatoriesToDocument(documentId, signatoriesData, requ
                     documentTitle: document.title,
                     signLink,
                 });
+            }
+
+            // "Salvar como contato" é só uma conveniência do dono pra reutilizar nome/e-mail
+            // da próxima vez — uma falha aqui nunca pode quebrar o fluxo principal de adicionar
+            // signatários, mesmo princípio já usado no projeto pra e-mail/IA.
+            if (saveContact) {
+                try {
+                    await upsertSavedSignatory(requestingUserId, { name, email });
+                } catch (err) {
+                    console.error('[SignatoryService.addSignatoriesToDocument] falha ao salvar contato', err);
+                }
             }
 
             return signatory;

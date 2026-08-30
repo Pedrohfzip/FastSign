@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, ArrowLeft, Loader2, Users, CheckCircle2, Search, X, PenLine, Clock, Trash2, AlertTriangle } from "lucide-react";
+import { FileText, ArrowLeft, Loader2, Users, CheckCircle2, Search, X, PenLine, Clock, Trash2, AlertTriangle, ArrowUpDown } from "lucide-react";
 import { getDocuments, getDocumentsToSign, getCompletedDocuments, deleteDocument } from "../api/fileRoute";
 
 const ACCENT = "#5b6af0";
@@ -21,6 +21,30 @@ const TABS = {
     COMPLETED: 'completed',
 };
 
+const SORT_OPTIONS = [
+    { value: 'recent', label: 'Mais recentes' },
+    { value: 'oldest', label: 'Mais antigos' },
+    { value: 'alphabetical', label: 'Ordem alfabética' },
+];
+
+// Reaproveitado pelas 3 abas — cada uma passa seus próprios acessores de data/título,
+// já que a forma de cada item varia (doc.title vs item.document.title vs item.title).
+function sortByCriteria(list, sortBy, getDate, getTitle) {
+    const sorted = [...list];
+    switch (sortBy) {
+        case 'oldest':
+            sorted.sort((a, b) => new Date(getDate(a)) - new Date(getDate(b)));
+            break;
+        case 'alphabetical':
+            sorted.sort((a, b) => (getTitle(a) || '').localeCompare(getTitle(b) || '', 'pt-BR', { sensitivity: 'base' }));
+            break;
+        case 'recent':
+        default:
+            sorted.sort((a, b) => new Date(getDate(b)) - new Date(getDate(a)));
+    }
+    return sorted;
+}
+
 export default function MyDocuments() {
     const navigate = useNavigate();
 
@@ -32,6 +56,7 @@ export default function MyDocuments() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState("");
+    const [sortBy, setSortBy] = useState('recent');
 
     const [docToDelete, setDocToDelete] = useState(null);
     const [deleting, setDeleting] = useState(false);
@@ -65,38 +90,47 @@ export default function MyDocuments() {
 
     const filteredDocuments = useMemo(() => {
         const term = search.trim().toLowerCase();
-        if (!term) return documents;
-        return documents.filter((doc) => {
-            const titleMatch = doc.title?.toLowerCase().includes(term);
-            const signatoryMatch = doc.signatoryNames?.some((name) => name.toLowerCase().includes(term));
-            return titleMatch || signatoryMatch;
-        });
-    }, [documents, search]);
+        const base = !term
+            ? documents
+            : documents.filter((doc) => {
+                const titleMatch = doc.title?.toLowerCase().includes(term);
+                const signatoryMatch = doc.signatoryNames?.some((name) => name.toLowerCase().includes(term));
+                return titleMatch || signatoryMatch;
+            });
+        return sortByCriteria(base, sortBy, (doc) => doc.createdAt, (doc) => doc.title);
+    }, [documents, search, sortBy]);
 
     const filteredToSign = useMemo(() => {
         const term = search.trim().toLowerCase();
-        if (!term) return toSignDocuments;
-        return toSignDocuments.filter((item) => {
-            const titleMatch = item.document.title?.toLowerCase().includes(term);
-            const ownerMatch = item.document.ownerName?.toLowerCase().includes(term);
-            return titleMatch || ownerMatch;
-        });
-    }, [toSignDocuments, search]);
+        const base = !term
+            ? toSignDocuments
+            : toSignDocuments.filter((item) => {
+                const titleMatch = item.document.title?.toLowerCase().includes(term);
+                const ownerMatch = item.document.ownerName?.toLowerCase().includes(term);
+                return titleMatch || ownerMatch;
+            });
+        return sortByCriteria(base, sortBy, (item) => item.document.createdAt, (item) => item.document.title);
+    }, [toSignDocuments, search, sortBy]);
 
     const filteredCompleted = useMemo(() => {
         const term = search.trim().toLowerCase();
-        if (!term) return completedDocuments;
-        return completedDocuments.filter((item) => {
-            const titleMatch = item.title?.toLowerCase().includes(term);
-            const ownerMatch = item.ownerName?.toLowerCase().includes(term);
-            return titleMatch || ownerMatch;
-        });
-    }, [completedDocuments, search]);
+        const base = !term
+            ? completedDocuments
+            : completedDocuments.filter((item) => {
+                const titleMatch = item.title?.toLowerCase().includes(term);
+                const ownerMatch = item.ownerName?.toLowerCase().includes(term);
+                return titleMatch || ownerMatch;
+            });
+        return sortByCriteria(base, sortBy, (item) => item.createdAt, (item) => item.title);
+    }, [completedDocuments, search, sortBy]);
 
     const pendingToSignCount = toSignDocuments.filter((item) => item.signatoryStatus === 'PENDING').length;
 
     const formatDate = (dateStr) => {
-        return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+        const date = new Date(dateStr);
+        const datePart = date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+        const timePart = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+        return `${datePart} às ${timePart}`;
     };
 
     const handleConfirmDelete = async () => {
@@ -226,29 +260,49 @@ export default function MyDocuments() {
                         </div>
                     </div>
 
-                    {/* Campo de busca */}
+                    {/* Campo de busca + ordenação */}
                     {!loading && !error && (documents.length > 0 || toSignDocuments.length > 0 || completedDocuments.length > 0) && (
-                        <div
-                            className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
-                            style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
-                        >
-                            <Search size={16} className="text-gray-500 shrink-0" />
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder={
-                                    activeTab === TABS.MINE
-                                        ? "Buscar por nome do documento ou signatário..."
-                                        : "Buscar por nome do documento ou remetente..."
-                                }
-                                className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
-                            />
-                            {search && (
-                                <button onClick={() => setSearch("")} className="text-gray-500 hover:text-white transition-colors shrink-0">
-                                    <X size={14} />
-                                </button>
-                            )}
+                        <div className="flex flex-col sm:flex-row gap-2.5">
+                            <div
+                                className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl flex-1 min-w-0"
+                                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                            >
+                                <Search size={16} className="text-gray-500 shrink-0" />
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder={
+                                        activeTab === TABS.MINE
+                                            ? "Buscar por nome do documento ou signatário..."
+                                            : "Buscar por nome do documento ou remetente..."
+                                    }
+                                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
+                                />
+                                {search && (
+                                    <button onClick={() => setSearch("")} className="text-gray-500 hover:text-white transition-colors shrink-0">
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
+
+                            <div
+                                className="flex items-center gap-2 px-3 py-2.5 rounded-xl shrink-0"
+                                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                            >
+                                <ArrowUpDown size={14} className="text-gray-500 shrink-0" />
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value)}
+                                    className="bg-transparent outline-none text-sm text-gray-300"
+                                >
+                                    {SORT_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value} style={{ background: "#14141f" }}>
+                                            {opt.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     )}
 

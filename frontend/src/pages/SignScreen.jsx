@@ -5,7 +5,7 @@ import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, PenLine, CheckCircle2, Loader2, AlertCircle, ArrowLeft, Check, User, MousePointerClick, IdCard } from "lucide-react";
 import { getSignatureInfo, getSignatureFile, confirmSignature } from "../api/signRoute";
-import PdfPositionPicker from "../components/PdfPositionPicker";
+import PdfPositionPicker, { DEFAULT_STAMP_WIDTH_RATIO } from "../components/PdfPositionPicker";
 import { useSignatureImage } from "../hooks/useSignatureImage";
 import { formatCPF } from "../utils/formatDocument";
 
@@ -73,10 +73,16 @@ export default function SignScreen() {
         return () => { cancelled = true; };
     }, [accessToken]);
 
-    // Toda vez que a posição muda (o usuário tocou em outro lugar do documento),
-    // a confirmação anterior deixa de valer — exige nova confirmação explícita.
+    // Toda vez que a posição muda (o usuário tocou em outro lugar do documento, ou
+    // arrastou o handle de redimensionar na borda da prévia), a confirmação anterior
+    // deixa de valer — exige nova confirmação explícita. Preserva o `widthRatio`
+    // atual quando a mudança vem de um clique de reposicionar (que não carrega esse
+    // campo), pra não perder o tamanho já escolhido.
     const handlePositionChange = (newPosition) => {
-        setPosition(newPosition);
+        setPosition((prev) => ({
+            ...newPosition,
+            widthRatio: newPosition.widthRatio ?? prev?.widthRatio ?? DEFAULT_STAMP_WIDTH_RATIO,
+        }));
         setPositionConfirmed(false);
     };
 
@@ -263,6 +269,7 @@ export default function SignScreen() {
                                     disabled={signing}
                                     signatureImage={signatureImage}
                                     maxPage={data?.document?.contentPageCount}
+                                    confirmed={positionConfirmed}
                                 />
                             </div>
 

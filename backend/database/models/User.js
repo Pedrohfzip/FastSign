@@ -11,6 +11,10 @@ export default (sequelize, DataTypes) => {
                 foreignKey: 'userId',
                 as: 'signatories',
             });
+            User.hasMany(models.SavedSignatory, {
+                foreignKey: 'userId',
+                as: 'savedSignatories',
+            });
         }
     }
 

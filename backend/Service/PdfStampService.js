@@ -1,16 +1,29 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 // Mesma proporção usada no frontend (frontend/src/components/PdfPositionPicker.jsx,
-// `width: "28%"` na prévia) — precisa bater nos dois lados pra prévia e carimbo final
-// ficarem do mesmo tamanho. Fração da LARGURA DA PÁGINA, não um valor fixo em pontos,
-// pra funcionar em A4, Letter, etc.
+// DEFAULT_STAMP_WIDTH_RATIO) — é o valor padrão (nenhum `position.widthRatio` no
+// payload) E o teto máximo permitido: o usuário só pode DIMINUIR a assinatura na
+// prévia, nunca aumentar além disso. Fração da LARGURA DA PÁGINA, não um valor fixo
+// em pontos, pra funcionar em A4, Letter, etc.
 const STAMP_WIDTH_RATIO = 0.28;
+
+// Espelha MIN_STAMP_WIDTH_RATIO do frontend — piso de segurança pro tamanho do
+// carimbo. Como `POST /sign/:token` é uma rota pública (signatário externo, sem
+// login), o clamp aqui é obrigatório mesmo que o frontend já limite o arrasto:
+// nada impede um cliente malicioso de mandar um `widthRatio` arbitrário.
+const MIN_STAMP_WIDTH_RATIO = 0.12;
 
 // Mesmo fallback usado em SignController.getByToken quando não há sugestão de posição.
 const DEFAULT_POSITION = { page: null, x: 0.5, y: 0.8 };
 
 function clamp01(value) {
     return Math.min(Math.max(value, 0), 1);
+}
+
+function clampRange(value, min, max) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return max;
+    return Math.min(Math.max(num, min), max);
 }
 
 function decodeImageDataUrl(imageDataUrl) {
@@ -48,7 +61,11 @@ export async function stampSignatureImage(pdfBuffer, { imageDataUrl, position })
     const x = clamp01(position?.x ?? DEFAULT_POSITION.x);
     const y = clamp01(position?.y ?? DEFAULT_POSITION.y);
 
-    const stampWidth = pageWidth * STAMP_WIDTH_RATIO;
+    // `widthRatio` vem da prévia no frontend (o quanto o usuário encolheu a
+    // assinatura arrastando a borda) — clampado de novo aqui por segurança, com
+    // fallback pro tamanho padrão de sempre quando o campo não vier no payload.
+    const widthRatio = clampRange(position?.widthRatio ?? STAMP_WIDTH_RATIO, MIN_STAMP_WIDTH_RATIO, STAMP_WIDTH_RATIO);
+    const stampWidth = pageWidth * widthRatio;
     const stampHeight = stampWidth * (pngImage.height / pngImage.width);
 
     // Centraliza no ponto clicado. Eixo Y do PDF cresce de baixo pra cima — inverte

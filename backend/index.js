@@ -45,6 +45,18 @@ app.use(cors({
 app.use(express.json({ limit: '2mb' }));
 app.use(cookieParser());
 
+// URLs de assinatura (/assinar/:accessToken, /sign/:accessToken) carregam um token de
+// posse na própria URL — sem isso, o navegador vazaria a URL inteira (token incluído)
+// no cabeçalho Referer pra qualquer link/recurso de terceiro que viesse a ser carregado
+// a partir dessas páginas no futuro. `no-referrer` nunca envia Referer em NENHUMA
+// requisição saindo do app (nem same-origin), mais estrito que o padrão do navegador
+// (`strict-origin-when-cross-origin`) — seguro aqui porque nada no app depende de ler
+// esse cabeçalho.
+app.use((req, res, next) => {
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    next();
+});
+
 
 app.use('/api', router);
 
