@@ -298,7 +298,7 @@ export default function DocumentDetail() {
                                         <p className="text-xs px-1" style={{ color: "#f87171" }}>{summaryError}</p>
                                     )}
 
-                                    {!summaryLoading && (
+                                    {/* {!summaryLoading && (
                                         <button
                                             type="button"
                                             onClick={getDocResume}
@@ -312,7 +312,7 @@ export default function DocumentDetail() {
                                             <Sparkles size={14} />
                                             {summary ? "Gerar novo resumo" : "Resumir documento com IA"}
                                         </button>
-                                    )}
+                                    )} */}
                                 </div>
 
                                 <div style={{ borderTop: `1px solid ${BORDER_SOFT}` }} />
