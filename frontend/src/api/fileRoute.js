@@ -57,6 +57,13 @@ export const getDocumentResume = async (documentId, signal) => {
     return response.data;
 }
 
+// Pergunta sobre o conteúdo do documento (RAG). Devolve { answer, sources } — os
+// `sources` são os trechos do documento usados pra montar a resposta.
+export const askDocumentQuestion = async (documentId, question) => {
+    const response = await api.post(`/documents/${documentId}/rag/ask`, { question });
+    return response.data;
+};
+
 export const getDocumentsToSign = async () => {
     const response = await api.get('/documents/to-sign');
     return response.data;

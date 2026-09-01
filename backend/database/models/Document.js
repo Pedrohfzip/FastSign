@@ -15,6 +15,10 @@ export default (sequelize, DataTypes) => {
                 foreignKey: 'documentId',
                 as: 'signatories',
             });
+            Document.hasMany(models.DocumentChunk, {
+                foreignKey: 'documentId',
+                as: 'chunks',
+            });
             Document.belongsTo(models.User, {
                 foreignKey: 'userId',
                 as: 'owner',

@@ -8,7 +8,9 @@ import {
     generateDocumentSummary,
     getDocumentResume,
     getDocumentBuffer,
-    deleteDocument
+    deleteDocument,
+    ingestDocumentForRag,
+    askQuestionAboutDocument,
 } from '../Service/DocumentService.js';
 import {
     addSignatoriesToDocument,
@@ -16,8 +18,44 @@ import {
     listPendingSignaturesForUser,
     listCompletedSignaturesForUser,
 } from '../Service/SignatoryService.js';
+import { isRagEnabled } from '../Service/RagService.js';
+
 
 const DocController = {
+    // Reindexação manual. A indexação normal acontece sozinha no upload (ver `upload`
+    // abaixo) — esta rota fica como utilitário pra reprocessar um documento específico,
+    // por exemplo depois de um período com o Ollama fora do ar.
+    async ingestRag(req, res) {
+        try {
+            const { id } = req.params;
+            const result = await ingestDocumentForRag(id, req.userId);
+            return res.json({ message: 'Indexação concluída.', ...result });
+        } catch (err) {
+            console.error('[DocController.ingestRag]', err);
+            return res.status(err.statusCode || 500).json({
+                error: err.message || 'Erro ao indexar documento.',
+            });
+        }
+    },
+
+    async askRag(req, res) {
+        try {
+            const { id } = req.params;
+            const { question } = req.body;
+
+            if (!question || typeof question !== 'string' || !question.trim()) {
+                return res.status(400).json({ error: 'Envie uma pergunta.' });
+            }
+
+            const { answer, sources } = await askQuestionAboutDocument(id, req.userId, question.trim());
+            return res.json({ answer, sources });
+        } catch (err) {
+            console.error('[DocController.askRag]', err);
+            return res.status(err.statusCode || 500).json({
+                error: err.message || 'Erro ao consultar documento.',
+            });
+        }
+    },
     async upload(req, res) {
         try {
             console.log(req.file.buffer);
@@ -28,6 +66,15 @@ const DocController = {
             const userId = req.userId; // ⬅️ vem do requireAuth, não mais uuidv4()
             const { document, version } = await createDocument(req.file, userId);
 
+            // Indexação RAG em background: sem `await` de propósito, porque extrair o texto
+            // e gerar um embedding por chunk leva vários segundos e não pode segurar a
+            // resposta do upload. O `.catch()` é obrigatório aqui — sem ele, uma falha do
+            // Ollama viraria unhandled rejection e derrubaria o processo.
+            if (isRagEnabled()) {
+                ingestDocumentForRag(document.id, userId).catch((err) => {
+                    console.error('[DocController.upload] falha ao indexar documento para RAG', err);
+                });
+            }
 
             return res.status(201).json({
                 message: 'Documento criado com sucesso.',

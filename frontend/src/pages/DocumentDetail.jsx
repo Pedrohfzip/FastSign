@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import { FileText, ArrowLeft, Loader2, CheckCircle2, Clock, Mail, Sparkles, User, Download } from "lucide-react";
-import { getDocumentDetail, getDocumentResume, downloadDocumentFile } from "../api/fileRoute";
+import { FileText, ArrowLeft, Loader2, CheckCircle2, Clock, Mail, Sparkles, User, Download, MessageCircleQuestion, Send, ChevronDown } from "lucide-react";
+import { getDocumentDetail, getDocumentResume, downloadDocumentFile, askDocumentQuestion } from "../api/fileRoute";
 
 const ACCENT = "#5b6af0";
 const ACCENT_SOFT = "rgba(91,106,240,0.12)";
@@ -31,6 +31,14 @@ export default function DocumentDetail() {
 
     const [downloading, setDownloading] = useState(false);
     const [downloadError, setDownloadError] = useState(null);
+
+    // Pergunte sobre o documento (RAG)
+    const [question, setQuestion] = useState("");
+    const [askLoading, setAskLoading] = useState(false);
+    const [askError, setAskError] = useState(null);
+    const [answer, setAnswer] = useState(null);
+    const [sources, setSources] = useState([]);
+    const [showSources, setShowSources] = useState(false);
 
     // Cancela um resumo em andamento se o usuário sair da página antes dele terminar.
     useEffect(() => () => summaryAbortRef.current?.abort(), []);
@@ -96,6 +104,27 @@ export default function DocumentDetail() {
             setDownloadError(err?.response?.data?.error || "Erro ao baixar documento.");
         } finally {
             setDownloading(false);
+        }
+    };
+
+    const handleAsk = async (e) => {
+        e?.preventDefault();
+        const trimmed = question.trim();
+        if (!trimmed || askLoading) return;
+
+        setAskLoading(true);
+        setAskError(null);
+        setAnswer(null);
+        setSources([]);
+        setShowSources(false);
+        try {
+            const result = await askDocumentQuestion(id, trimmed);
+            setAnswer(result.answer);
+            setSources(result.sources || []);
+        } catch (err) {
+            setAskError(err?.response?.data?.error || "Erro ao consultar o documento.");
+        } finally {
+            setAskLoading(false);
         }
     };
 
@@ -313,6 +342,153 @@ export default function DocumentDetail() {
                                             {summary ? "Gerar novo resumo" : "Resumir documento com IA"}
                                         </button>
                                     )} */}
+                                </div>
+
+                                <div style={{ borderTop: `1px solid ${BORDER_SOFT}` }} />
+
+                                {/* Pergunte sobre o documento (RAG) */}
+                                <div className="flex flex-col gap-2.5">
+                                    <p className="text-xs flex items-center gap-1.5" style={{ color: ACCENT }}>
+                                        <MessageCircleQuestion size={12} />
+                                        Pergunte sobre o documento
+                                    </p>
+
+                                    <form onSubmit={handleAsk} className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            value={question}
+                                            onChange={(e) => setQuestion(e.target.value)}
+                                            disabled={askLoading}
+                                            placeholder="Ex: qual é o prazo de vigência?"
+                                            className="flex-1 min-w-0 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none transition-colors focus:border-white/20 disabled:opacity-60"
+                                            style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={askLoading || !question.trim()}
+                                            className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-white transition-opacity disabled:opacity-40"
+                                            style={{
+                                                background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)`,
+                                                boxShadow: "0 8px 24px rgba(91, 106, 240, 0.3)",
+                                            }}
+                                        >
+                                            {askLoading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                                        </button>
+                                    </form>
+
+                                    <AnimatePresence mode="wait">
+                                        {askLoading ? (
+                                            // Mesmo padrão de loading do resumo — ícone girando + skeleton
+                                            <motion.div
+                                                key="ask-loading"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                className="flex flex-col gap-3 rounded-xl px-4 py-4"
+                                                style={{ background: ACCENT_SOFT, border: `1px solid rgba(91,106,240,0.25)` }}
+                                            >
+                                                <div className="flex items-center gap-2.5">
+                                                    <motion.div
+                                                        animate={{ rotate: 360 }}
+                                                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                                                        style={{ background: "rgba(91,106,240,0.2)" }}
+                                                    >
+                                                        <Sparkles size={14} style={{ color: ACCENT }} />
+                                                    </motion.div>
+                                                    <motion.p
+                                                        animate={{ opacity: [0.5, 1, 0.5] }}
+                                                        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                                                        className="text-sm font-medium"
+                                                        style={{ color: ACCENT }}
+                                                    >
+                                                        Procurando no documento...
+                                                    </motion.p>
+                                                </div>
+
+                                                <div className="flex flex-col gap-1.5 pl-1">
+                                                    {[88, 70].map((w, i) => (
+                                                        <motion.div
+                                                            key={i}
+                                                            animate={{ opacity: [0.15, 0.35, 0.15] }}
+                                                            transition={{
+                                                                duration: 1.4,
+                                                                repeat: Infinity,
+                                                                ease: "easeInOut",
+                                                                delay: i * 0.15,
+                                                            }}
+                                                            className="h-2 rounded-full"
+                                                            style={{ width: `${w}%`, background: "rgba(255,255,255,0.4)" }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        ) : answer ? (
+                                            <motion.div
+                                                key="ask-answer"
+                                                initial={{ opacity: 0, y: 6 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="rounded-xl px-4 py-3 text-sm text-gray-300"
+                                                style={{ background: "rgba(91,106,240,0.06)", border: `1px solid ${BORDER_SOFT}` }}
+                                            >
+                                                <p className="text-xs flex items-center gap-1.5 mb-2" style={{ color: ACCENT }}>
+                                                    <Sparkles size={11} />
+                                                    Resposta gerada por IA
+                                                </p>
+                                                <div className="flex flex-col gap-1.5">
+                                                    {answer.split('\n').filter(line => line.trim()).map((line, i) => (
+                                                        <p key={i} className="leading-relaxed">
+                                                            {line.trim()}
+                                                        </p>
+                                                    ))}
+                                                </div>
+
+                                                {sources.length > 0 && (
+                                                    <div className="mt-3" style={{ borderTop: `1px solid ${BORDER_SOFT}` }}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowSources((v) => !v)}
+                                                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 transition-colors pt-2.5"
+                                                        >
+                                                            <ChevronDown
+                                                                size={12}
+                                                                className="transition-transform"
+                                                                style={{ transform: showSources ? "rotate(180deg)" : "none" }}
+                                                            />
+                                                            {showSources ? "Ocultar trechos usados" : `Ver trechos usados (${sources.length})`}
+                                                        </button>
+
+                                                        <AnimatePresence initial={false}>
+                                                            {showSources && (
+                                                                <motion.div
+                                                                    initial={{ opacity: 0, height: 0 }}
+                                                                    animate={{ opacity: 1, height: "auto" }}
+                                                                    exit={{ opacity: 0, height: 0 }}
+                                                                    className="overflow-hidden"
+                                                                >
+                                                                    <div className="flex flex-col gap-2 pt-2.5">
+                                                                        {sources.map((src) => (
+                                                                            <p
+                                                                                key={src.chunkIndex}
+                                                                                className="text-xs text-gray-500 leading-relaxed rounded-lg px-3 py-2"
+                                                                                style={{ background: "rgba(255,255,255,0.03)" }}
+                                                                            >
+                                                                                {src.chunkText}
+                                                                            </p>
+                                                                        ))}
+                                                                    </div>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
+                                                )}
+                                            </motion.div>
+                                        ) : null}
+                                    </AnimatePresence>
+
+                                    {askError && (
+                                        <p className="text-xs px-1" style={{ color: "#f87171" }}>{askError}</p>
+                                    )}
                                 </div>
 
                                 <div style={{ borderTop: `1px solid ${BORDER_SOFT}` }} />

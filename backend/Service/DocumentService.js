@@ -4,6 +4,7 @@ import db from '../database/models/index.js';
 import storageService from './StorageService.js';
 import { extractTextFromPdf, summarizeText } from './AIService.js';
 import { detectSignaturePosition } from './SignaturePositionService.js';
+import { ingestDocument, askDocument } from './RagService.js'; // novo import
 const { Document, DocumentVersion, Signatory, sequelize } = db;
 
 export async function createDocument(file, userId) {
@@ -227,5 +228,39 @@ export async function getDocumentBuffer(documentId) {
     const buffer = await storageService.readVersionFile(document.currentVersion.filePath);
 
     return buffer;
+}
+
+export async function ingestDocumentForRag(documentId, userId) {
+    const document = await Document.findByPk(documentId);
+
+    if (!document || document.userId !== userId) {
+        const err = new Error('Documento não encontrado ou sem permissão.');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    const buffer = await getDocumentBuffer(documentId);
+    const text = await extractTextFromPdf(buffer); // já existe, importado de AIService.js
+
+    return await ingestDocument(documentId, text);
+}
+
+export async function askQuestionAboutDocument(documentId, userId, question) {
+    const document = await Document.findByPk(documentId);
+
+    if (!document) {
+        const err = new Error('Documento não encontrado.');
+        err.statusCode = 404;
+        throw err;
+    }
+
+    if (document.userId !== userId) {
+        const err = new Error('Você não tem permissão para consultar este documento.');
+        err.statusCode = 403;
+        throw err;
+    }
+
+    // askDocument nunca lança por falha de IA — devolve uma resposta explicando o problema.
+    return await askDocument(documentId, question);
 }
 
