@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router';
 import { Menu, FileText, Settings, HelpCircle, Info, LogOut, Home, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import useViewportMode from '../hooks/useViewportMode';
+import DesktopSidebar from './DesktopSidebar';
 
 
 
@@ -15,6 +17,9 @@ const Header = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { isAuthenticated, user, logout } = useAuth();
+    // Decide entre este header mobile e a sidebar de desktop — o hook é a única
+    // fonte de verdade dessa escolha no app (ver hooks/useViewportMode.js).
+    const isDesktop = useViewportMode();
 
     const MENU_OPTIONS = [
         { label: 'Inicio', icon: Home, onClick: () => navigate('/') },
@@ -44,6 +49,13 @@ const Header = () => {
     // violaria as Rules of Hooks assim que o usuário navegasse pra/de essa rota.
     if (location.pathname.startsWith('/assinar/')) {
         return null;
+    }
+
+    // Desktop (>= 1300x800): a navegação inteira vira uma sidebar lateral persistente,
+    // que também absorve o nome do usuário / botão "Entrar" do canto direito. Tudo que
+    // vem daqui pra baixo é o layout MOBILE original, intocado.
+    if (isDesktop) {
+        return <DesktopSidebar />;
     }
 
     const toggleMenu = () => {

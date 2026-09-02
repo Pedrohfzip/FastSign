@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { motion } from "motion/react";
 import { FileText, ShieldCheck, Zap, ArrowRight, CircleDot } from "lucide-react";
 import ProcessDocumentCard from "../components/ProcessDocumentCard";
+import useViewportMode from "../hooks/useViewportMode";
 
 const ACCENT = "#5b6af0";
 const BORDER_SOFT = "rgba(255,255,255,0.07)";
@@ -15,6 +16,7 @@ const pills = [
 
 export default function App() {
     const navigate = useNavigate();
+    const isDesktop = useViewportMode();
 
     // /upload é uma rota protegida (ver ProtectedRoute.jsx) — sem conta, ela manda o
     // usuário de volta pra essa mesma tela. Por isso o CTA leva pro cadastro primeiro;
@@ -43,19 +45,23 @@ export default function App() {
                 }}
             />
 
-            <div className="relative z-10 w-full max-w-6xl mx-auto px-6 py-6 2xl:py-12 flex flex-col lg:flex-row items-center justify-center gap-10 2xl:gap-16 min-h-full">
+            {/* Larguras/espaçamentos maiores só no modo desktop de verdade (>= 1300x800).
+                Os breakpoints lg/2xl continuam valendo pra tudo abaixo disso — inclusive os
+                notebooks 1366x768/1280x720, que por causa da ALTURA caem no modo mobile e
+                seguem com o espaçamento compacto original. */}
+            <div className={`relative z-10 w-full mx-auto py-6 2xl:py-12 flex flex-col lg:flex-row items-center justify-center min-h-full ${isDesktop ? "max-w-7xl px-10 gap-16" : "max-w-6xl px-6 gap-10"} 2xl:gap-16`}>
                 {/* Coluna de texto */}
                 <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.55 }}
-                    className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left gap-4 2xl:gap-5 max-w-xl"
+                    className={`flex-1 flex flex-col items-center lg:items-start text-center lg:text-left 2xl:gap-5 ${isDesktop ? "gap-5 max-w-2xl" : "gap-4 max-w-xl"}`}
                 >
                     {/* text-6xl fica só a partir de 2xl (≥1536px de largura) — na prática,
                         os notebooks 1366x768/1280x720 caem no lg e ficam no 5xl, senão o
                         headline sozinho já estourava a altura da viewport nessas telas mais
                         baixas, forçando scroll (ver ajuste pedido no Home.jsx) */}
-                    <h1 className="text-5xl 2xl:text-6xl font-semibold tracking-tight text-white leading-[1.1]">
+                    <h1 className={`2xl:text-6xl font-semibold tracking-tight text-white leading-[1.1] ${isDesktop ? "text-6xl" : "text-5xl"}`}>
                         Assine
                         <br />
                         documentos
@@ -63,7 +69,7 @@ export default function App() {
                         de <span style={{ color: ACCENT }}>graça.</span>
                     </h1>
 
-                    <p className="text-gray-400 text-base lg:text-lg leading-relaxed max-w-md">
+                    <p className={`text-gray-400 text-base lg:text-lg leading-relaxed ${isDesktop ? "max-w-lg" : "max-w-md"}`}>
                         Envie seu PDF, adicione quem precisa assinar e pronto — assinatura com validade jurídica
                         em minutos.
                     </p>

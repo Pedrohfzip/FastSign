@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, ArrowLeft, Loader2, Users, CheckCircle2, Search, X, PenLine, Clock, Trash2, AlertTriangle, ArrowUpDown } from "lucide-react";
 import { getDocuments, getDocumentsToSign, getCompletedDocuments, deleteDocument } from "../api/fileRoute";
+import useViewportMode from "../hooks/useViewportMode";
 
 const ACCENT = "#5b6af0";
 const BORDER_SOFT = "rgba(255,255,255,0.07)";
@@ -47,6 +48,7 @@ function sortByCriteria(list, sortBy, getDate, getTitle) {
 
 export default function MyDocuments() {
     const navigate = useNavigate();
+    const isDesktop = useViewportMode();
 
     const [activeTab, setActiveTab] = useState(TABS.MINE);
 
@@ -165,7 +167,7 @@ export default function MyDocuments() {
             />
 
             <main className="relative z-10 flex-1 flex items-start justify-center px-6 py-10 overflow-y-auto scrollbar-hidden">
-                <div className="w-full max-w-2xl flex flex-col gap-5 pb-10">
+                <div className={`w-full flex flex-col gap-5 pb-10 ${isDesktop ? "max-w-6xl" : "max-w-2xl"}`}>
                     {/* "Meus documentos" é um hub acessado de vários lugares (menu, redirects,
                         fluxos de assinatura) — em vez de depender do histórico do navegador
                         (`navigate(-1)`, frágil aqui: DocumentDetail.jsx empurra um novo
@@ -186,125 +188,127 @@ export default function MyDocuments() {
                         <p className="text-sm text-gray-400">Acompanhe seus envios e o que você precisa assinar.</p>
                     </div>
 
-                    {/* Abas */}
-                    <div className="-mx-6 px-6 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hidden">
-                        <div
-                            className="flex gap-1 p-1 rounded-xl w-fit"
-                            style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
-                        >
-                            <button
-                                onClick={() => setActiveTab(TABS.MINE)}
-                                className="px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors relative whitespace-nowrap shrink-0"
-                                style={{
-                                    color: activeTab === TABS.MINE ? "#fff" : "#8b8b9a",
-                                }}
-                            >
-                                {activeTab === TABS.MINE && (
-                                    <motion.div
-                                        layoutId="activeTab"
-                                        className="absolute inset-0 rounded-lg"
-                                        style={{ background: ACCENT }}
-                                        transition={{ duration: 0.2 }}
-                                    />
-                                )}
-                                <span className="relative z-10">Meus documentos</span>
-                            </button>
-
-                            <button
-                                onClick={() => setActiveTab(TABS.TO_SIGN)}
-                                className="px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors relative flex items-center gap-1.5 whitespace-nowrap shrink-0"
-                                style={{
-                                    color: activeTab === TABS.TO_SIGN ? "#fff" : "#8b8b9a",
-                                }}
-                            >
-                                {activeTab === TABS.TO_SIGN && (
-                                    <motion.div
-                                        layoutId="activeTab"
-                                        className="absolute inset-0 rounded-lg"
-                                        style={{ background: ACCENT }}
-                                        transition={{ duration: 0.2 }}
-                                    />
-                                )}
-                                <span className="relative z-10 sm:hidden">Para assinar</span>
-                                <span className="relative z-10 hidden sm:inline">Documentos para assinar</span>
-                                {pendingToSignCount > 0 && (
-                                    <span
-                                        className="relative z-10 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-                                        style={{
-                                            background: activeTab === TABS.TO_SIGN ? "rgba(255,255,255,0.25)" : "#f87171",
-                                            color: "#fff",
-                                        }}
-                                    >
-                                        {pendingToSignCount}
-                                    </span>
-                                )}
-                            </button>
-
-                            <button
-                                onClick={() => setActiveTab(TABS.COMPLETED)}
-                                className="px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors relative whitespace-nowrap shrink-0"
-                                style={{
-                                    color: activeTab === TABS.COMPLETED ? "#fff" : "#8b8b9a",
-                                }}
-                            >
-                                {activeTab === TABS.COMPLETED && (
-                                    <motion.div
-                                        layoutId="activeTab"
-                                        className="absolute inset-0 rounded-lg"
-                                        style={{ background: ACCENT }}
-                                        transition={{ duration: 0.2 }}
-                                    />
-                                )}
-                                <span className="relative z-10">Finalizados</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Campo de busca + ordenação */}
-                    {!loading && !error && (documents.length > 0 || toSignDocuments.length > 0 || completedDocuments.length > 0) && (
-                        <div className="flex flex-col sm:flex-row gap-2.5">
+                    <div className={isDesktop ? "flex flex-row items-center justify-between gap-4" : "flex flex-col gap-5"}>
+                        {/* Abas */}
+                        <div className="-mx-6 px-6 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hidden">
                             <div
-                                className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl flex-1 min-w-0"
+                                className="flex gap-1 p-1 rounded-xl w-fit"
                                 style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
                             >
-                                <Search size={16} className="text-gray-500 shrink-0" />
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder={
-                                        activeTab === TABS.MINE
-                                            ? "Buscar por nome do documento ou signatário..."
-                                            : "Buscar por nome do documento ou remetente..."
-                                    }
-                                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
-                                />
-                                {search && (
-                                    <button onClick={() => setSearch("")} className="text-gray-500 hover:text-white transition-colors shrink-0">
-                                        <X size={14} />
-                                    </button>
-                                )}
-                            </div>
-
-                            <div
-                                className="flex items-center gap-2 px-3 py-2.5 rounded-xl shrink-0"
-                                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
-                            >
-                                <ArrowUpDown size={14} className="text-gray-500 shrink-0" />
-                                <select
-                                    value={sortBy}
-                                    onChange={(e) => setSortBy(e.target.value)}
-                                    className="bg-transparent outline-none text-sm text-gray-300"
+                                <button
+                                    onClick={() => setActiveTab(TABS.MINE)}
+                                    className="px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors relative whitespace-nowrap shrink-0"
+                                    style={{
+                                        color: activeTab === TABS.MINE ? "#fff" : "#8b8b9a",
+                                    }}
                                 >
-                                    {SORT_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value} style={{ background: "#14141f" }}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                    {activeTab === TABS.MINE && (
+                                        <motion.div
+                                            layoutId="activeTab"
+                                            className="absolute inset-0 rounded-lg"
+                                            style={{ background: ACCENT }}
+                                            transition={{ duration: 0.2 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10">Meus documentos</span>
+                                </button>
+
+                                <button
+                                    onClick={() => setActiveTab(TABS.TO_SIGN)}
+                                    className="px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors relative flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                                    style={{
+                                        color: activeTab === TABS.TO_SIGN ? "#fff" : "#8b8b9a",
+                                    }}
+                                >
+                                    {activeTab === TABS.TO_SIGN && (
+                                        <motion.div
+                                            layoutId="activeTab"
+                                            className="absolute inset-0 rounded-lg"
+                                            style={{ background: ACCENT }}
+                                            transition={{ duration: 0.2 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10 sm:hidden">Para assinar</span>
+                                    <span className="relative z-10 hidden sm:inline">Documentos para assinar</span>
+                                    {pendingToSignCount > 0 && (
+                                        <span
+                                            className="relative z-10 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+                                            style={{
+                                                background: activeTab === TABS.TO_SIGN ? "rgba(255,255,255,0.25)" : "#f87171",
+                                                color: "#fff",
+                                            }}
+                                        >
+                                            {pendingToSignCount}
+                                        </span>
+                                    )}
+                                </button>
+
+                                <button
+                                    onClick={() => setActiveTab(TABS.COMPLETED)}
+                                    className="px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors relative whitespace-nowrap shrink-0"
+                                    style={{
+                                        color: activeTab === TABS.COMPLETED ? "#fff" : "#8b8b9a",
+                                    }}
+                                >
+                                    {activeTab === TABS.COMPLETED && (
+                                        <motion.div
+                                            layoutId="activeTab"
+                                            className="absolute inset-0 rounded-lg"
+                                            style={{ background: ACCENT }}
+                                            transition={{ duration: 0.2 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10">Finalizados</span>
+                                </button>
                             </div>
                         </div>
-                    )}
+
+                        {/* Campo de busca + ordenação */}
+                        {!loading && !error && (documents.length > 0 || toSignDocuments.length > 0 || completedDocuments.length > 0) && (
+                            <div className={`flex flex-col sm:flex-row gap-2.5 ${isDesktop ? "w-[420px] shrink-0" : ""}`}>
+                                <div
+                                    className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl flex-1 min-w-0"
+                                    style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                                >
+                                    <Search size={16} className="text-gray-500 shrink-0" />
+                                    <input
+                                        type="text"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        placeholder={
+                                            activeTab === TABS.MINE
+                                                ? "Buscar por nome do documento ou signatário..."
+                                                : "Buscar por nome do documento ou remetente..."
+                                        }
+                                        className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
+                                    />
+                                    {search && (
+                                        <button onClick={() => setSearch("")} className="text-gray-500 hover:text-white transition-colors shrink-0">
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div
+                                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl shrink-0"
+                                    style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                                >
+                                    <ArrowUpDown size={14} className="text-gray-500 shrink-0" />
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) => setSortBy(e.target.value)}
+                                        className="bg-transparent outline-none text-sm text-gray-300"
+                                    >
+                                        {SORT_OPTIONS.map((opt) => (
+                                            <option key={opt.value} value={opt.value} style={{ background: "#14141f" }}>
+                                                {opt.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     {loading ? (
                         <div className="flex justify-center py-16">
@@ -336,7 +340,7 @@ export default function MyDocuments() {
                                             Nenhum documento encontrado para "{search}".
                                         </div>
                                     ) : (
-                                        <ul className="flex flex-col gap-2.5">
+                                        <ul className={isDesktop ? "grid grid-cols-2 2xl:grid-cols-3 gap-3 items-start" : "flex flex-col gap-2.5"}>
                                             {filteredDocuments.map((doc) => {
                                                 const statusInfo = STATUS_LABELS[doc.status] || STATUS_LABELS.DRAFT;
                                                 const allSigned = doc.totalSignatories > 0 && doc.signedCount === doc.totalSignatories;
@@ -423,7 +427,7 @@ export default function MyDocuments() {
                                             Nenhum documento encontrado para "{search}".
                                         </div>
                                     ) : (
-                                        <ul className="flex flex-col gap-2.5">
+                                        <ul className={isDesktop ? "grid grid-cols-2 2xl:grid-cols-3 gap-3 items-start" : "flex flex-col gap-2.5"}>
                                             {filteredToSign.map((item) => {
                                                 const isSigned = item.signatoryStatus === 'SIGNED';
 
@@ -507,7 +511,7 @@ export default function MyDocuments() {
                                             Nenhum documento encontrado para "{search}".
                                         </div>
                                     ) : (
-                                        <ul className="flex flex-col gap-2.5">
+                                        <ul className={isDesktop ? "grid grid-cols-2 2xl:grid-cols-3 gap-3 items-start" : "flex flex-col gap-2.5"}>
                                             {filteredCompleted.map((item) => (
                                                 <motion.li
                                                     key={item.id}

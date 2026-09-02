@@ -6,6 +6,7 @@ import { UserPlus, X, Mail, User, ArrowRight, ArrowLeft, Loader2, Link2, Check, 
 import { addSignatories } from "../api/fileRoute";
 import { getSavedSignatories, deleteSavedSignatory } from "../api/savedSignatoryRoute";
 import { useAuth } from "../context/AuthContext";
+import useViewportMode from "../hooks/useViewportMode";
 
 const ACCENT = "#5b6af0";
 const ACCENT_SOFT = "rgba(91,106,240,0.12)";
@@ -26,6 +27,7 @@ export default function AddSignatories() {
     const { id: documentId } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const isDesktop = useViewportMode();
 
     const [includeSelf, setIncludeSelf] = useState(false);
     const [requireDocument, setRequireDocument] = useState(false);
@@ -147,7 +149,7 @@ export default function AddSignatories() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.3 }}
-                        className="w-full max-w-lg flex flex-col gap-5"
+                        className={`w-full flex flex-col gap-5 ${isDesktop ? "max-w-3xl" : "max-w-lg"}`}
                     >
                         <div className="flex flex-col items-center text-center gap-2 mb-2">
                             <div
@@ -191,7 +193,7 @@ export default function AddSignatories() {
 
                         {/* Demais signatários — precisam do link copiado manualmente */}
                         {otherSignatories.length > 0 && (
-                            <ul className="flex flex-col gap-2">
+                            <ul className={isDesktop ? "grid grid-cols-2 gap-2 items-start" : "flex flex-col gap-2"}>
                                 {otherSignatories.map((s) => (
                                     <li
                                         key={s.id}
@@ -244,6 +246,108 @@ export default function AddSignatories() {
         );
     }
 
+    // Chips de contatos salvos — no mobile ficam dentro do formulário (é o único
+    // lugar possível numa coluna só); no desktop dão lugar a um painel lateral mais
+    // completo (nome + e-mail), montado logo abaixo.
+    const savedContactsBlock = availableContacts.length > 0 && (
+        <div className="flex flex-col gap-2">
+            <span className="text-xs text-gray-500 px-1">Seus contatos salvos</span>
+            <div className="flex flex-wrap gap-2">
+                {availableContacts.map((contact) => (
+                    <div
+                        key={contact.id}
+                        className="flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-full text-xs"
+                        style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => addRow(contact)}
+                            className="text-gray-300 hover:text-white transition-colors"
+                        >
+                            {contact.name}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleDeleteContact(contact.id)}
+                            aria-label={`Remover ${contact.name} dos contatos salvos`}
+                            className="text-gray-600 hover:text-red-400 transition-colors p-0.5"
+                        >
+                            <X size={11} />
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    // Coluna lateral do desktop: contatos salvos + o que acontece depois de enviar.
+    // Não existe no mobile, onde não há largura sobrando pra isso.
+    const sideColumn = (
+        <aside className="flex flex-col gap-4">
+            {availableContacts.length > 0 && (
+                <div
+                    className="flex flex-col gap-2.5 rounded-2xl px-4 py-4"
+                    style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${BORDER_SOFT}` }}
+                >
+                    <span className="text-xs text-gray-500">Seus contatos salvos</span>
+                    <ul className="flex flex-col gap-1.5">
+                        {availableContacts.map((contact) => (
+                            <li
+                                key={contact.id}
+                                className="flex items-center gap-2 px-2.5 py-2 rounded-xl"
+                                style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => addRow(contact)}
+                                    className="flex-1 min-w-0 text-left"
+                                >
+                                    <p className="text-sm text-white truncate">{contact.name}</p>
+                                    <p className="text-xs text-gray-500 truncate">{contact.email}</p>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleDeleteContact(contact.id)}
+                                    aria-label={`Remover ${contact.name} dos contatos salvos`}
+                                    className="shrink-0 text-gray-600 hover:text-red-400 transition-colors p-1"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            <div
+                className="flex flex-col gap-3 rounded-2xl px-4 py-4"
+                style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${BORDER_SOFT}` }}
+            >
+                <span className="text-sm font-medium text-white">O que acontece depois</span>
+                <ul className="flex flex-col gap-3">
+                    <li className="flex items-start gap-2.5">
+                        <Link2 size={14} className="shrink-0 mt-0.5" style={{ color: ACCENT }} />
+                        <span className="text-xs text-gray-400 leading-relaxed">
+                            Cada signatário ganha um link único pra assinar, sem precisar criar conta.
+                        </span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                        <Mail size={14} className="shrink-0 mt-0.5" style={{ color: ACCENT }} />
+                        <span className="text-xs text-gray-400 leading-relaxed">
+                            O link vai por e-mail assim que você enviar — e também fica aqui pra copiar.
+                        </span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                        <ShieldCheck size={14} className="shrink-0 mt-0.5" style={{ color: ACCENT }} />
+                        <span className="text-xs text-gray-400 leading-relaxed">
+                            Toda assinatura guarda hash do PDF, IP e data/hora como evidência.
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </aside>
+    );
+
     // Formulário de adição de signatários
     return (
         <div
@@ -262,7 +366,7 @@ export default function AddSignatories() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
-                    className="w-full max-w-lg flex flex-col gap-5 pb-10"
+                    className={`w-full flex flex-col gap-5 pb-10 ${isDesktop ? "max-w-5xl" : "max-w-lg"}`}
                 >
                     <button
                         onClick={() => navigate(-1)}
@@ -291,234 +395,215 @@ export default function AddSignatories() {
                         </div>
                     )}
 
-                    <button
-                        type="button"
-                        onClick={() => setIncludeSelf((prev) => !prev)}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors"
-                        style={{
-                            background: includeSelf ? "rgba(91,106,240,0.1)" : "rgba(255,255,255,0.02)",
-                            border: `1px solid ${includeSelf ? "rgba(91,106,240,0.4)" : BORDER_SOFT}`,
-                        }}
-                    >
-                        <div
-                            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors"
-                            style={{
-                                background: includeSelf ? ACCENT : "transparent",
-                                border: `1.5px solid ${includeSelf ? ACCENT : "rgba(255,255,255,0.25)"}`,
-                            }}
-                        >
-                            <AnimatePresence>
-                                {includeSelf && (
-                                    <motion.div
-                                        initial={{ scale: 0, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        exit={{ scale: 0, opacity: 0 }}
-                                        transition={{ duration: 0.15 }}
-                                    >
-                                        <Check size={13} color="#fff" strokeWidth={3} />
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        <UserCheck size={16} className="text-gray-400 shrink-0" />
-
-                        <span className="text-sm text-white font-medium">Eu também vou assinar</span>
-                    </button>
-
-                    {/* Exige CPF/RG/outro documento do signatário na hora de assinar — vira mais
-                        uma evidência gravada junto com a assinatura (como hash, IP etc. já são),
-                        não uma validação de autenticidade real. Vale pra todos os signatários
-                        deste documento, inclusive o próprio dono se "Eu também vou assinar". */}
-                    <button
-                        type="button"
-                        onClick={() => setRequireDocument((prev) => !prev)}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors"
-                        style={{
-                            background: requireDocument ? "rgba(91,106,240,0.1)" : "rgba(255,255,255,0.02)",
-                            border: `1px solid ${requireDocument ? "rgba(91,106,240,0.4)" : BORDER_SOFT}`,
-                        }}
-                    >
-                        <div
-                            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors"
-                            style={{
-                                background: requireDocument ? ACCENT : "transparent",
-                                border: `1.5px solid ${requireDocument ? ACCENT : "rgba(255,255,255,0.25)"}`,
-                            }}
-                        >
-                            <AnimatePresence>
-                                {requireDocument && (
-                                    <motion.div
-                                        initial={{ scale: 0, opacity: 0 }}
-                                        animate={{ scale: 1, opacity: 1 }}
-                                        exit={{ scale: 0, opacity: 0 }}
-                                        transition={{ duration: 0.15 }}
-                                    >
-                                        <Check size={13} color="#fff" strokeWidth={3} />
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        <ShieldCheck size={16} className="text-gray-400 shrink-0" />
-
-                        <div className="flex flex-col">
-                            <span className="text-sm text-white font-medium">Exigir documento de identificação</span>
-                            <span className="text-xs text-gray-500">CPF, RG ou outro — pedido na hora de assinar, como prova extra de identidade.</span>
-                        </div>
-                    </button>
-
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                        <AnimatePresence>
-                            {rows.map((row, index) => (
-                                <motion.div
-                                    key={row.id}
-                                    initial={{ opacity: 0, y: -8 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, x: 12 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="flex flex-col gap-2 p-3 rounded-xl"
-                                    style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${BORDER_SOFT}` }}
+                    {/* No desktop, formulário à esquerda e coluna de apoio à direita. No
+                        mobile o wrapper externo é só uma coluna com o MESMO gap-5 de antes,
+                        então nada muda visualmente. */}
+                    <div className={isDesktop ? "grid grid-cols-[minmax(0,1fr)_320px] gap-6 items-start" : "flex flex-col gap-5"}>
+                        <div className="min-w-0 flex flex-col gap-5">
+                            <button
+                                type="button"
+                                onClick={() => setIncludeSelf((prev) => !prev)}
+                                className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors"
+                                style={{
+                                    background: includeSelf ? "rgba(91,106,240,0.1)" : "rgba(255,255,255,0.02)",
+                                    border: `1px solid ${includeSelf ? "rgba(91,106,240,0.4)" : BORDER_SOFT}`,
+                                }}
+                            >
+                                <div
+                                    className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors"
+                                    style={{
+                                        background: includeSelf ? ACCENT : "transparent",
+                                        border: `1.5px solid ${includeSelf ? ACCENT : "rgba(255,255,255,0.25)"}`,
+                                    }}
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-500">Signatário {index + 1}</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => removeRow(row.id)}
-                                            className="text-gray-500 hover:text-red-400 transition-colors"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                    </div>
-
-                                    <div
-                                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg"
-                                        style={{
-                                            background: "rgba(255,255,255,0.03)",
-                                            border: `1px solid ${errors[row.id]?.name ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
-                                        }}
-                                    >
-                                        <User size={15} className="text-gray-500 shrink-0" />
-                                        <input
-                                            type="text"
-                                            value={row.name}
-                                            onChange={(e) => updateRow(row.id, "name", e.target.value)}
-                                            placeholder="Nome completo"
-                                            className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
-                                        />
-                                    </div>
-                                    {errors[row.id]?.name && (
-                                        <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors[row.id].name}</p>
-                                    )}
-
-                                    <div
-                                        className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg"
-                                        style={{
-                                            background: "rgba(255,255,255,0.03)",
-                                            border: `1px solid ${errors[row.id]?.email ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
-                                        }}
-                                    >
-                                        <Mail size={15} className="text-gray-500 shrink-0" />
-                                        <input
-                                            type="email"
-                                            value={row.email}
-                                            onChange={(e) => updateRow(row.id, "email", e.target.value)}
-                                            placeholder="email@exemplo.com"
-                                            className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
-                                        />
-                                    </div>
-                                    {errors[row.id]?.email && (
-                                        <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors[row.id].email}</p>
-                                    )}
-
-                                    <button
-                                        type="button"
-                                        onClick={() => toggleSaveContact(row.id)}
-                                        className="flex items-center gap-2 pl-1 pt-0.5 text-left w-fit"
-                                    >
-                                        <div
-                                            className="w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 transition-colors"
-                                            style={{
-                                                background: row.saveContact ? ACCENT : "transparent",
-                                                border: `1.5px solid ${row.saveContact ? ACCENT : "rgba(255,255,255,0.25)"}`,
-                                            }}
-                                        >
-                                            {row.saveContact && <Check size={9} color="#fff" strokeWidth={3} />}
-                                        </div>
-                                        <span className="text-xs text-gray-500">Salvar como contato para reutilizar depois</span>
-                                    </button>
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
-
-                        {availableContacts.length > 0 && (
-                            <div className="flex flex-col gap-2">
-                                <span className="text-xs text-gray-500 px-1">Seus contatos salvos</span>
-                                <div className="flex flex-wrap gap-2">
-                                    {availableContacts.map((contact) => (
-                                        <div
-                                            key={contact.id}
-                                            className="flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-full text-xs"
-                                            style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
-                                        >
-                                            <button
-                                                type="button"
-                                                onClick={() => addRow(contact)}
-                                                className="text-gray-300 hover:text-white transition-colors"
+                                    <AnimatePresence>
+                                        {includeSelf && (
+                                            <motion.div
+                                                initial={{ scale: 0, opacity: 0 }}
+                                                animate={{ scale: 1, opacity: 1 }}
+                                                exit={{ scale: 0, opacity: 0 }}
+                                                transition={{ duration: 0.15 }}
                                             >
-                                                {contact.name}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteContact(contact.id)}
-                                                aria-label={`Remover ${contact.name} dos contatos salvos`}
-                                                className="text-gray-600 hover:text-red-400 transition-colors p-0.5"
-                                            >
-                                                <X size={11} />
-                                            </button>
-                                        </div>
-                                    ))}
+                                                <Check size={13} color="#fff" strokeWidth={3} />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </div>
-                            </div>
-                        )}
 
-                        {rows.length === 0 && includeSelf && (
-                            <p className="text-xs text-gray-500 text-center -mt-1">
-                                Só você vai assinar este documento.
-                            </p>
-                        )}
+                                <UserCheck size={16} className="text-gray-400 shrink-0" />
 
-                        <button
-                            type="button"
-                            onClick={() => addRow()}
-                            className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-colors"
-                            style={{ border: `1px dashed ${BORDER_SOFT}` }}
-                        >
-                            <UserPlus size={14} />
-                            {rows.length === 0 ? "Adicionar signatário" : "Adicionar outro signatário"}
-                        </button>
+                                <span className="text-sm text-white font-medium">Eu também vou assinar</span>
+                            </button>
 
-                        <motion.button
-                            type="submit"
-                            disabled={submitting}
-                            whileHover={{ scale: submitting ? 1 : 1.02 }}
-                            whileTap={{ scale: submitting ? 1 : 0.98 }}
-                            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-semibold text-white mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                            style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)`, boxShadow: "0 8px 24px rgba(91, 106, 240, 0.3)" }}
-                        >
-                            {submitting ? (
-                                <>
-                                    <Loader2 size={16} className="animate-spin" />
-                                    Enviando...
-                                </>
-                            ) : (
-                                <>
-                                    Enviar para assinatura
-                                    <ArrowRight size={16} />
-                                </>
-                            )}
-                        </motion.button>
-                    </form>
+                            {/* Exige CPF/RG/outro documento do signatário na hora de assinar — vira mais
+                                uma evidência gravada junto com a assinatura (como hash, IP etc. já são),
+                                não uma validação de autenticidade real. Vale pra todos os signatários
+                                deste documento, inclusive o próprio dono se "Eu também vou assinar". */}
+                            <button
+                                type="button"
+                                onClick={() => setRequireDocument((prev) => !prev)}
+                                className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors"
+                                style={{
+                                    background: requireDocument ? "rgba(91,106,240,0.1)" : "rgba(255,255,255,0.02)",
+                                    border: `1px solid ${requireDocument ? "rgba(91,106,240,0.4)" : BORDER_SOFT}`,
+                                }}
+                            >
+                                <div
+                                    className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors"
+                                    style={{
+                                        background: requireDocument ? ACCENT : "transparent",
+                                        border: `1.5px solid ${requireDocument ? ACCENT : "rgba(255,255,255,0.25)"}`,
+                                    }}
+                                >
+                                    <AnimatePresence>
+                                        {requireDocument && (
+                                            <motion.div
+                                                initial={{ scale: 0, opacity: 0 }}
+                                                animate={{ scale: 1, opacity: 1 }}
+                                                exit={{ scale: 0, opacity: 0 }}
+                                                transition={{ duration: 0.15 }}
+                                            >
+                                                <Check size={13} color="#fff" strokeWidth={3} />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+
+                                <ShieldCheck size={16} className="text-gray-400 shrink-0" />
+
+                                <div className="flex flex-col">
+                                    <span className="text-sm text-white font-medium">Exigir documento de identificação</span>
+                                    <span className="text-xs text-gray-500">CPF, RG ou outro — pedido na hora de assinar, como prova extra de identidade.</span>
+                                </div>
+                            </button>
+
+                            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                                <AnimatePresence>
+                                    {rows.map((row, index) => (
+                                        <motion.div
+                                            key={row.id}
+                                            initial={{ opacity: 0, y: -8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, x: 12 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="flex flex-col gap-2 p-3 rounded-xl"
+                                            style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${BORDER_SOFT}` }}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs text-gray-500">Signatário {index + 1}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeRow(row.id)}
+                                                    className="text-gray-500 hover:text-red-400 transition-colors"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+
+                                            <div
+                                                className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg"
+                                                style={{
+                                                    background: "rgba(255,255,255,0.03)",
+                                                    border: `1px solid ${errors[row.id]?.name ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
+                                                }}
+                                            >
+                                                <User size={15} className="text-gray-500 shrink-0" />
+                                                <input
+                                                    type="text"
+                                                    value={row.name}
+                                                    onChange={(e) => updateRow(row.id, "name", e.target.value)}
+                                                    placeholder="Nome completo"
+                                                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
+                                                />
+                                            </div>
+                                            {errors[row.id]?.name && (
+                                                <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors[row.id].name}</p>
+                                            )}
+
+                                            <div
+                                                className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg"
+                                                style={{
+                                                    background: "rgba(255,255,255,0.03)",
+                                                    border: `1px solid ${errors[row.id]?.email ? "rgba(240,91,91,0.5)" : BORDER_SOFT}`,
+                                                }}
+                                            >
+                                                <Mail size={15} className="text-gray-500 shrink-0" />
+                                                <input
+                                                    type="email"
+                                                    value={row.email}
+                                                    onChange={(e) => updateRow(row.id, "email", e.target.value)}
+                                                    placeholder="email@exemplo.com"
+                                                    className="w-full bg-transparent outline-none text-sm text-white placeholder:text-gray-600"
+                                                />
+                                            </div>
+                                            {errors[row.id]?.email && (
+                                                <p className="text-xs pl-1" style={{ color: "#f87171" }}>{errors[row.id].email}</p>
+                                            )}
+
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleSaveContact(row.id)}
+                                                className="flex items-center gap-2 pl-1 pt-0.5 text-left w-fit"
+                                            >
+                                                <div
+                                                    className="w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 transition-colors"
+                                                    style={{
+                                                        background: row.saveContact ? ACCENT : "transparent",
+                                                        border: `1.5px solid ${row.saveContact ? ACCENT : "rgba(255,255,255,0.25)"}`,
+                                                    }}
+                                                >
+                                                    {row.saveContact && <Check size={9} color="#fff" strokeWidth={3} />}
+                                                </div>
+                                                <span className="text-xs text-gray-500">Salvar como contato para reutilizar depois</span>
+                                            </button>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+
+                                {/* No desktop esses chips saem daqui e viram um painel na coluna da direita */}
+                                {!isDesktop && savedContactsBlock}
+
+                                {rows.length === 0 && includeSelf && (
+                                    <p className="text-xs text-gray-500 text-center -mt-1">
+                                        Só você vai assinar este documento.
+                                    </p>
+                                )}
+
+                                <button
+                                    type="button"
+                                    onClick={() => addRow()}
+                                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white transition-colors"
+                                    style={{ border: `1px dashed ${BORDER_SOFT}` }}
+                                >
+                                    <UserPlus size={14} />
+                                    {rows.length === 0 ? "Adicionar signatário" : "Adicionar outro signatário"}
+                                </button>
+
+                                <motion.button
+                                    type="submit"
+                                    disabled={submitting}
+                                    whileHover={{ scale: submitting ? 1 : 1.02 }}
+                                    whileTap={{ scale: submitting ? 1 : 0.98 }}
+                                    className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-sm font-semibold text-white mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                                    style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #7c5cf6 100%)`, boxShadow: "0 8px 24px rgba(91, 106, 240, 0.3)" }}
+                                >
+                                    {submitting ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin" />
+                                            Enviando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Enviar para assinatura
+                                            <ArrowRight size={16} />
+                                        </>
+                                    )}
+                                </motion.button>
+                            </form>
+                        </div>
+
+                        {isDesktop && sideColumn}
+                    </div>
                 </motion.div>
             </main>
         </div>

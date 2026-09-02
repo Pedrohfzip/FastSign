@@ -8,6 +8,7 @@ import { uploadDocument } from "../api/fileRoute";
 import { useNavigate } from 'react-router'
 import PdfViewer from "../components/PdfViewer";
 import ProcessCarousel from "../components/ProcessCarousel";
+import useViewportMode from "../hooks/useViewportMode";
 
 // Só PDF, igual ao input original (o backend só sabe processar PDF)
 const ACCEPTED = [".pdf"];
@@ -33,6 +34,7 @@ export default function UploadScreen({ onContinue }) {
     const [selectedId, setSelectedId] = useState(null); // ⬅️ qual item está sendo pré-visualizado
     const inputRef = useRef(null);
     const navigate = useNavigate()
+    const isDesktop = useViewportMode();
 
     const hasItems = items.length > 0;
     const selectedItem = items.find((it) => it.id === selectedId) || null;
@@ -144,6 +146,298 @@ export default function UploadScreen({ onContinue }) {
 
     const canSubmit = items.length > 0 && !submitting;
 
+    // Conteúdo da "coluna de envio" — o mesmo nos dois modos, só muda onde ele é
+    // colocado: empilhado acima do preview no mobile, ou numa coluna própria à
+    // esquerda no desktop.
+    const uploadColumn = (
+        <>
+        {/* O passo a passo do fluxo (Enviar → Signatários → Assinar) agora é
+            renderizado globalmente em routes/index.jsx, fora do slide de página —
+            fica persistente ao navegar entre as telas em vez de remontar aqui. */}
+
+        {/* Carrossel ilustrativo do processo (Enviar → Signatários → Assinar) — puramente
+            decorativo, toca em loop sozinho; ocupa o espaço vazio acima da dropzone
+            enquanto ela existe, e some junto com ela assim que o primeiro arquivo entra. */}
+        <AnimatePresence>
+            {!hasItems && (
+                <motion.div
+                    key="process-carousel"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="shrink-0 overflow-hidden"
+                >
+                    <ProcessCarousel />
+                </motion.div>
+            )}
+        </AnimatePresence>
+
+        {/* Disclaimer do tipo/limite de arquivo — some junto com a dropzone assim que
+            o primeiro arquivo é adicionado, já que deixa de ser relevante. */}
+        <AnimatePresence>
+            {!hasItems && (
+                <motion.div
+                    key="disclaimer"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex items-center gap-1.5 text-gray-500 shrink-0 overflow-hidden"
+                >
+                    <Info size={12} className="shrink-0" />
+                    <p className="text-xs">
+                        Aceitamos apenas arquivos em PDF, com até {MAX_SIZE_LABEL} cada.
+                    </p>
+                </motion.div>
+            )}
+        </AnimatePresence>
+
+        {/* Drop zone — só aparece antes de qualquer arquivo ser adicionado */}
+        <AnimatePresence>
+            {!hasItems && (
+                <motion.div
+                    key="dropzone"
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.96, height: 0, marginBottom: 0 }}
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={handleDrop}
+                    onClick={() => inputRef.current?.click()}
+                    style={{
+                        borderColor: dragging ? "rgba(91,106,240,0.7)" : "rgba(255,255,255,0.1)",
+                        backgroundColor: dragging ? "rgba(91,106,240,0.06)" : "rgba(255,255,255,0.02)",
+                    }}
+                    className="relative cursor-pointer rounded-2xl border border-dashed flex flex-col items-center justify-center gap-2 py-6 px-6 select-none shrink-0 scrollbar-hidden"
+                >
+                    <motion.div
+                        animate={{ scale: dragging ? 1.08 : 1 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                        className="w-11 h-11 rounded-xl flex items-center justify-center"
+                        style={{
+                            background: dragging ? "rgba(91,106,240,0.2)" : "rgba(255,255,255,0.05)",
+                            border: "1px solid rgba(255,255,255,0.08)",
+                        }}
+                    >
+                        <Upload size={18} style={{ color: dragging ? "#5b6af0" : "#6b6b80" }} />
+                    </motion.div>
+
+                    <div className="text-center">
+                        <p className="text-sm font-medium text-white">
+                            {dragging ? "Solte aqui" : "Arraste seus arquivos"}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                            ou{" "}
+                            <span className="text-[#8b93f7] underline underline-offset-2 cursor-pointer">
+                                clique para selecionar
+                            </span>
+                        </p>
+                    </div>
+
+                    <div className="flex gap-1.5 flex-wrap justify-center">
+                        {ACCEPTED.map((ext) => (
+                            <span
+                                key={ext}
+                                className="text-[10px] font-medium px-2 py-0.5 rounded-md uppercase"
+                                style={{
+                                    background: "rgba(255,255,255,0.04)",
+                                    color: "#6b6b80",
+                                    border: "1px solid rgba(255,255,255,0.06)",
+                                    letterSpacing: "0.06em",
+                                }}
+                            >
+                                {ext.replace(".", "")}
+                            </span>
+                        ))}
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+
+        {/* Input de arquivo — fica fora do drop zone pra continuar acessível mesmo depois dele sumir */}
+        <input
+            ref={inputRef}
+            type="file"
+            multiple
+            accept={ACCEPTED.join(",")}
+            className="hidden"
+            onChange={handleFileChange}
+        />
+
+        {/* Lista de arquivos — compacta, some junto com o drop zone quando não há itens */}
+        <AnimatePresence>
+            {hasItems && (
+                <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col gap-1.5 shrink-0"
+                >
+                    <ul className="flex flex-col gap-1.5">
+                        {items.map((item) => {
+                            const isSelected = item.id === selectedId;
+                            return (
+                                <motion.li
+                                    key={item.id}
+                                    layout
+                                    initial={{ opacity: 0, x: -12 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 12 }}
+                                    transition={{ duration: 0.22 }}
+                                    onClick={() => setSelectedId(item.id)}
+                                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer transition-colors"
+                                    style={{
+                                        background: isSelected ? "rgba(91,106,240,0.08)" : "rgba(255,255,255,0.03)",
+                                        border: isSelected ? "1px solid rgba(91,106,240,0.4)" : "1px solid rgba(255,255,255,0.07)",
+                                    }}
+                                >
+                                    <div
+                                        className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                                        style={{
+                                            background:
+                                                item.status === STATUS.ERROR
+                                                    ? "rgba(240,91,91,0.12)"
+                                                    : item.status === STATUS.DONE
+                                                        ? "rgba(91,240,150,0.12)"
+                                                        : "rgba(91,106,240,0.12)",
+                                        }}
+                                    >
+                                        {item.status === STATUS.DONE ? (
+                                            <CheckCircle2 size={12} style={{ color: "#4ade80" }} />
+                                        ) : item.status === STATUS.ERROR ? (
+                                            <AlertCircle size={12} style={{ color: "#f87171" }} />
+                                        ) : (
+                                            <FileText size={12} style={{ color: "#5b6af0" }} />
+                                        )}
+                                    </div>
+
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-white truncate">{item.file.name}</p>
+
+                                        {item.status === STATUS.UPLOADING && (
+                                            <div className="w-full bg-white/10 rounded-full h-1 mt-1">
+                                                <div
+                                                    className="h-1 rounded-full transition-all"
+                                                    style={{ width: `${item.progress}%`, background: "#5b6af0" }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {item.status === STATUS.ERROR ? (
+                                            <p className="text-xs mt-0.5" style={{ color: "#f87171" }}>
+                                                {item.error}{" "}
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); retryItem(item.id); }}
+                                                    className="underline underline-offset-2"
+                                                >
+                                                    Tentar novamente
+                                                </button>
+                                            </p>
+                                        ) : (
+                                            <p className="text-xs text-gray-400">
+                                                {item.status === STATUS.UPLOADING
+                                                    ? `Enviando... ${item.progress}%`
+                                                    : formatSize(item.file.size)}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
+                                        className="text-gray-400 hover:text-white transition-colors ml-1"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </motion.li>
+                            );
+                        })}
+                    </ul>
+
+                    {/* Botão discreto pra adicionar mais arquivos, já que o drop zone grande sumiu */}
+                    <button
+                        onClick={() => inputRef.current?.click()}
+                        className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs text-gray-400 hover:text-white transition-colors"
+                        style={{ border: "1px dashed rgba(255,255,255,0.1)" }}
+                    >
+                        <Plus size={12} />
+                        Adicionar outro arquivo
+                    </button>
+                </motion.div>
+            )}
+        </AnimatePresence>
+        </>
+    );
+
+    // No mobile o preview continua sendo um card que aparece embaixo da lista e cresce
+    // com a página. No desktop ele vira um painel fixo à direita, com scroll próprio e
+    // um estado vazio — assim a área não fica "piscando" entre existir e não existir a
+    // cada arquivo selecionado/removido.
+    const previewPane = isDesktop ? (
+        <div
+            className="flex-1 min-h-0 rounded-2xl overflow-hidden flex flex-col"
+            style={{ background: "#14141f", border: "1px solid rgba(255,255,255,0.08)" }}
+        >
+            <AnimatePresence mode="wait">
+                {selectedItem ? (
+                    <motion.div
+                        key={selectedItem.id}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                        className="flex-1 min-h-0 overflow-y-auto scrollbar-hidden p-4"
+                    >
+                        {/* Teto de largura: o PdfViewer desenha a página na largura do
+                            container, então sem isso o PDF ficaria gigante numa tela larga. */}
+                        <div className="w-full max-w-[560px] mx-auto">
+                            <PdfViewer pdfUrl={previewUrl} />
+                        </div>
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="preview-empty"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex-1 flex flex-col items-center justify-center gap-2 px-6 text-center"
+                    >
+                        <div
+                            className="w-11 h-11 rounded-xl flex items-center justify-center"
+                            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                        >
+                            <FileText size={18} style={{ color: "#6b6b80" }} />
+                        </div>
+                        <p className="text-sm text-gray-400">A pré-visualização aparece aqui</p>
+                        <p className="text-xs text-gray-600">Selecione um arquivo da lista ao lado.</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    ) : (
+        /* Preview inline do PDF — altura generosa fixa, a PÁGINA rola pra revelar o resto */
+        <AnimatePresence mode="wait">
+            {selectedItem && (
+                <motion.div
+                    key={selectedItem.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                    className="flex flex-col rounded-2xl overflow-hidden shrink-0 p-3"
+                    style={{ background: "#14141f", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                    {/* Só visualização — sem clique pra posicionar nem overlay de assinatura,
+                        já que aqui não passamos onCanvasClick nem children pro PdfViewer. */}
+                    <PdfViewer pdfUrl={previewUrl} />
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+
     return (
         <div
             className="w-full h-full overflow-y-auto bg-[#0b0b12] text-white flex flex-col scrollbar-hidden"
@@ -158,247 +452,29 @@ export default function UploadScreen({ onContinue }) {
                 }}
             />
 
-            {/* Main — centraliza o drop zone quando vazio; com itens, cresce naturalmente com o conteúdo */}
-            <main className="relative z-10 flex-1 flex items-start justify-center px-6 py-6 scrollbar-hidden">
-                <div className="w-full max-w-lg flex flex-col gap-3 scrollbar-hidden pb-24 ">
-                    {/* pb-24 dá espaço embaixo pro botão flutuante não cobrir o fim do conteúdo */}
-                    {/* O passo a passo do fluxo (Enviar → Signatários → Assinar) agora é
-                        renderizado globalmente em routes/index.jsx, fora do slide de página —
-                        fica persistente ao navegar entre as telas em vez de remontar aqui. */}
 
-                    {/* Carrossel ilustrativo do processo (Enviar → Signatários → Assinar) — puramente
-                        decorativo, toca em loop sozinho; ocupa o espaço vazio acima da dropzone
-                        enquanto ela existe, e some junto com ela assim que o primeiro arquivo entra. */}
-                    <AnimatePresence>
-                        {!hasItems && (
-                            <motion.div
-                                key="process-carousel"
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                                transition={{ duration: 0.25 }}
-                                className="shrink-0 overflow-hidden"
-                            >
-                                <ProcessCarousel />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Disclaimer do tipo/limite de arquivo — some junto com a dropzone assim que
-                        o primeiro arquivo é adicionado, já que deixa de ser relevante. */}
-                    <AnimatePresence>
-                        {!hasItems && (
-                            <motion.div
-                                key="disclaimer"
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                                transition={{ duration: 0.25 }}
-                                className="flex items-center gap-1.5 text-gray-500 shrink-0 overflow-hidden"
-                            >
-                                <Info size={12} className="shrink-0" />
-                                <p className="text-xs">
-                                    Aceitamos apenas arquivos em PDF, com até {MAX_SIZE_LABEL} cada.
-                                </p>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Drop zone — só aparece antes de qualquer arquivo ser adicionado */}
-                    <AnimatePresence>
-                        {!hasItems && (
-                            <motion.div
-                                key="dropzone"
-                                initial={{ opacity: 0, scale: 0.96 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.96, height: 0, marginBottom: 0 }}
-                                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                                onDragLeave={() => setDragging(false)}
-                                onDrop={handleDrop}
-                                onClick={() => inputRef.current?.click()}
-                                style={{
-                                    borderColor: dragging ? "rgba(91,106,240,0.7)" : "rgba(255,255,255,0.1)",
-                                    backgroundColor: dragging ? "rgba(91,106,240,0.06)" : "rgba(255,255,255,0.02)",
-                                }}
-                                className="relative cursor-pointer rounded-2xl border border-dashed flex flex-col items-center justify-center gap-2 py-6 px-6 select-none shrink-0 scrollbar-hidden"
-                            >
-                                <motion.div
-                                    animate={{ scale: dragging ? 1.08 : 1 }}
-                                    transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                                    className="w-11 h-11 rounded-xl flex items-center justify-center"
-                                    style={{
-                                        background: dragging ? "rgba(91,106,240,0.2)" : "rgba(255,255,255,0.05)",
-                                        border: "1px solid rgba(255,255,255,0.08)",
-                                    }}
-                                >
-                                    <Upload size={18} style={{ color: dragging ? "#5b6af0" : "#6b6b80" }} />
-                                </motion.div>
-
-                                <div className="text-center">
-                                    <p className="text-sm font-medium text-white">
-                                        {dragging ? "Solte aqui" : "Arraste seus arquivos"}
-                                    </p>
-                                    <p className="text-xs text-gray-400 mt-1">
-                                        ou{" "}
-                                        <span className="text-[#8b93f7] underline underline-offset-2 cursor-pointer">
-                                            clique para selecionar
-                                        </span>
-                                    </p>
-                                </div>
-
-                                <div className="flex gap-1.5 flex-wrap justify-center">
-                                    {ACCEPTED.map((ext) => (
-                                        <span
-                                            key={ext}
-                                            className="text-[10px] font-medium px-2 py-0.5 rounded-md uppercase"
-                                            style={{
-                                                background: "rgba(255,255,255,0.04)",
-                                                color: "#6b6b80",
-                                                border: "1px solid rgba(255,255,255,0.06)",
-                                                letterSpacing: "0.06em",
-                                            }}
-                                        >
-                                            {ext.replace(".", "")}
-                                        </span>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Input de arquivo — fica fora do drop zone pra continuar acessível mesmo depois dele sumir */}
-                    <input
-                        ref={inputRef}
-                        type="file"
-                        multiple
-                        accept={ACCEPTED.join(",")}
-                        className="hidden"
-                        onChange={handleFileChange}
-                    />
-
-                    {/* Lista de arquivos — compacta, some junto com o drop zone quando não há itens */}
-                    <AnimatePresence>
-                        {hasItems && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -8 }}
-                                transition={{ duration: 0.2 }}
-                                className="flex flex-col gap-1.5 shrink-0"
-                            >
-                                <ul className="flex flex-col gap-1.5">
-                                    {items.map((item) => {
-                                        const isSelected = item.id === selectedId;
-                                        return (
-                                            <motion.li
-                                                key={item.id}
-                                                layout
-                                                initial={{ opacity: 0, x: -12 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                exit={{ opacity: 0, x: 12 }}
-                                                transition={{ duration: 0.22 }}
-                                                onClick={() => setSelectedId(item.id)}
-                                                className="flex items-center gap-2.5 px-3 py-2 rounded-xl cursor-pointer transition-colors"
-                                                style={{
-                                                    background: isSelected ? "rgba(91,106,240,0.08)" : "rgba(255,255,255,0.03)",
-                                                    border: isSelected ? "1px solid rgba(91,106,240,0.4)" : "1px solid rgba(255,255,255,0.07)",
-                                                }}
-                                            >
-                                                <div
-                                                    className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-                                                    style={{
-                                                        background:
-                                                            item.status === STATUS.ERROR
-                                                                ? "rgba(240,91,91,0.12)"
-                                                                : item.status === STATUS.DONE
-                                                                    ? "rgba(91,240,150,0.12)"
-                                                                    : "rgba(91,106,240,0.12)",
-                                                    }}
-                                                >
-                                                    {item.status === STATUS.DONE ? (
-                                                        <CheckCircle2 size={12} style={{ color: "#4ade80" }} />
-                                                    ) : item.status === STATUS.ERROR ? (
-                                                        <AlertCircle size={12} style={{ color: "#f87171" }} />
-                                                    ) : (
-                                                        <FileText size={12} style={{ color: "#5b6af0" }} />
-                                                    )}
-                                                </div>
-
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-white truncate">{item.file.name}</p>
-
-                                                    {item.status === STATUS.UPLOADING && (
-                                                        <div className="w-full bg-white/10 rounded-full h-1 mt-1">
-                                                            <div
-                                                                className="h-1 rounded-full transition-all"
-                                                                style={{ width: `${item.progress}%`, background: "#5b6af0" }}
-                                                            />
-                                                        </div>
-                                                    )}
-
-                                                    {item.status === STATUS.ERROR ? (
-                                                        <p className="text-xs mt-0.5" style={{ color: "#f87171" }}>
-                                                            {item.error}{" "}
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); retryItem(item.id); }}
-                                                                className="underline underline-offset-2"
-                                                            >
-                                                                Tentar novamente
-                                                            </button>
-                                                        </p>
-                                                    ) : (
-                                                        <p className="text-xs text-gray-400">
-                                                            {item.status === STATUS.UPLOADING
-                                                                ? `Enviando... ${item.progress}%`
-                                                                : formatSize(item.file.size)}
-                                                        </p>
-                                                    )}
-                                                </div>
-
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
-                                                    className="text-gray-400 hover:text-white transition-colors ml-1"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            </motion.li>
-                                        );
-                                    })}
-                                </ul>
-
-                                {/* Botão discreto pra adicionar mais arquivos, já que o drop zone grande sumiu */}
-                                <button
-                                    onClick={() => inputRef.current?.click()}
-                                    className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs text-gray-400 hover:text-white transition-colors"
-                                    style={{ border: "1px dashed rgba(255,255,255,0.1)" }}
-                                >
-                                    <Plus size={12} />
-                                    Adicionar outro arquivo
-                                </button>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Preview inline do PDF — altura generosa fixa, a PÁGINA rola pra revelar o resto */}
-                    <AnimatePresence mode="wait">
-                        {selectedItem && (
-                            <motion.div
-                                key={selectedItem.id}
-                                initial={{ opacity: 0, y: 12 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -12 }}
-                                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                                className="flex flex-col rounded-2xl overflow-hidden shrink-0 p-3"
-                                style={{ background: "#14141f", border: "1px solid rgba(255,255,255,0.08)" }}
-                            >
-                                {/* Só visualização — sem clique pra posicionar nem overlay de assinatura,
-                                    já que aqui não passamos onCanvasClick nem children pro PdfViewer. */}
-                                <PdfViewer pdfUrl={previewUrl} />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+            {/* Main — no mobile centraliza o drop zone quando vazio e cresce com o
+                conteúdo; no desktop vira duas colunas de altura fixa (envio à esquerda,
+                preview à direita), cada uma rolando por conta própria. */}
+            <main
+                className={`relative z-10 flex-1 px-6 py-6 scrollbar-hidden flex justify-center ${isDesktop ? "min-h-0 items-stretch" : "items-start"}`}
+            >
+                {isDesktop ? (
+                    <div className="w-full max-w-7xl min-h-0 flex flex-row gap-6">
+                        <div className="w-[400px] shrink-0 flex flex-col gap-3 overflow-y-auto scrollbar-hidden pb-24">
+                            {uploadColumn}
+                        </div>
+                        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+                            {previewPane}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="w-full max-w-lg flex flex-col gap-3 scrollbar-hidden pb-24 ">
+                        {/* pb-24 dá espaço embaixo pro botão flutuante não cobrir o fim do conteúdo */}
+                        {uploadColumn}
+                        {previewPane}
+                    </div>
+                )}
             </main>
 
             {/* Botão de enviar — flutuante, sempre visível independente do scroll da página */}
