@@ -1,4 +1,4 @@
-// Tela institucional "Sobre o FastSign" — estática, sem backend. Acessível pelo menu
+// Tela institucional "Sobre o Sinaki" — estática, sem backend. Acessível pelo menu
 // do Header. "Voltar" usa histórico (navigate(-1)) pelo mesmo motivo de Help.jsx: essa
 // tela é aberta a partir de qualquer página via o menu global, sem um "pai" fixo.
 import React from "react";
@@ -76,7 +76,7 @@ export default function About() {
                             <PenLine size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-semibold text-white">FastSign</h1>
+                            <h1 className="text-2xl font-semibold text-white">Sinaki</h1>
                             <p className="text-sm text-gray-400 mt-1 max-w-sm mx-auto">
                                 Assinatura eletrônica de documentos, sem fricção: envie um PDF, diga quem precisa
                                 assinar, e pronto.
@@ -166,7 +166,7 @@ export default function About() {
                         <div className="flex flex-col gap-1">
                             <p className="text-sm font-medium text-white">Validade jurídica</p>
                             <p className="text-xs text-gray-400 leading-relaxed">
-                                As assinaturas geradas no FastSign são "assinaturas eletrônicas simples", reconhecidas
+                                As assinaturas geradas no Sinaki são "assinaturas eletrônicas simples", reconhecidas
                                 pela legislação brasileira (MP 2.200-2/2001 e Lei 14.063/2020) para acordos entre
                                 partes que consentem com esse meio, sem exigir certificado digital ICP-Brasil.
                             </p>
@@ -188,7 +188,7 @@ export default function About() {
                             </h2>
                         </div>
                         <p className="text-sm text-gray-400 leading-relaxed mt-1">
-                            FastSign é um projeto pessoal, construído para explorar um fluxo de assinatura eletrônica
+                            Sinaki é um projeto pessoal, construído para explorar um fluxo de assinatura eletrônica
                             rápido e simples de ponta a ponta — do upload do PDF ao certificado final. Feito com
                             React, Node.js e PostgreSQL, com um resumo de documentos gerado por IA rodando localmente.
                         </p>

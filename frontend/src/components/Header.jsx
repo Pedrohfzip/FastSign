@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router';
 import { Menu, FileText, Settings, HelpCircle, Info, LogOut, Home, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import useViewportMode from '../hooks/useViewportMode';
+import useSidebarLayout from '../hooks/useSidebarLayout';
 import DesktopSidebar from './DesktopSidebar';
 
 
@@ -17,16 +17,17 @@ const Header = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { isAuthenticated, user, logout } = useAuth();
-    // Decide entre este header mobile e a sidebar de desktop — o hook é a única
-    // fonte de verdade dessa escolha no app (ver hooks/useViewportMode.js).
-    const isDesktop = useViewportMode();
+    // Decide entre este header horizontal e a sidebar de desktop — a regra mora no
+    // hook porque o AppShell.jsx precisa chegar exatamente na mesma conclusão
+    // (ver hooks/useSidebarLayout.js).
+    const { showSidebar, awaitingSession } = useSidebarLayout();
 
     const MENU_OPTIONS = [
         { label: 'Inicio', icon: Home, onClick: () => navigate('/') },
         { label: 'Meus documentos', icon: FileText, onClick: () => navigate('/documents') },
         { label: 'Configurações', icon: Settings, onClick: () => navigate('/settings') },
         { label: 'Ajuda', icon: HelpCircle, onClick: () => navigate('/help') },
-        { label: 'Sobre o FastSign', icon: Info, onClick: () => navigate('/about') },
+        { label: 'Sobre o Sinaki', icon: Info, onClick: () => navigate('/about') },
     ];
 
     useEffect(() => {
@@ -51,10 +52,17 @@ const Header = () => {
         return null;
     }
 
-    // Desktop (>= 1300x800): a navegação inteira vira uma sidebar lateral persistente,
-    // que também absorve o nome do usuário / botão "Entrar" do canto direito. Tudo que
-    // vem daqui pra baixo é o layout MOBILE original, intocado.
-    if (isDesktop) {
+    // No desktop, enquanto a sessão ainda está sendo verificada, não renderiza
+    // navegação nenhuma: ver o comentário de `awaitingSession` em useSidebarLayout.js.
+    if (awaitingSession) {
+        return null;
+    }
+
+    // Desktop + logado: a navegação inteira vira uma sidebar lateral persistente, que
+    // também absorve o nome do usuário do canto direito. Tudo que vem daqui pra baixo
+    // é o header horizontal original — usado no mobile e também no desktop deslogado,
+    // onde ele é só logo à esquerda + "Entrar" à direita.
+    if (showSidebar) {
         return <DesktopSidebar />;
     }
 
@@ -99,7 +107,7 @@ const Header = () => {
                     >
                         <Zap size={14} className="text-white" fill="currentColor" />
                     </div>
-                    <span className="text-sm font-semibold text-white">FastSign</span>
+                    <span className="text-sm font-semibold text-white">Sinaki</span>
                 </button>
             )}
 

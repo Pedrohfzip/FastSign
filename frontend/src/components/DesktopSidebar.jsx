@@ -1,7 +1,11 @@
-// Navegação em modo DESKTOP (viewport >= 1300x800 — ver hooks/useViewportMode.js).
+// Navegação em modo DESKTOP para usuário LOGADO (ver hooks/useSidebarLayout.js).
 // Substitui inteiramente o Header horizontal + dropdown flutuante do mobile: aqui a
-// navegação é uma sidebar lateral persistente, e o nome do usuário / botão "Entrar"
-// (que no mobile ficam no canto superior direito) moram no rodapé dela.
+// navegação é uma sidebar lateral persistente, e o nome do usuário (que no mobile
+// fica no canto superior direito) mora no rodapé dela.
+//
+// Deslogado esta sidebar NÃO existe em modo nenhum — sem conta não há o que navegar
+// além da landing, então o desktop também usa o header horizontal (logo à esquerda,
+// "Entrar" à direita), igual ao mobile.
 //
 // Quem escolhe entre esta sidebar e o header mobile é o Header.jsx — ele continua
 // sendo o único ponto de montagem da navegação no app (ver main.jsx), então a
@@ -11,7 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router';
 import {
     FileText, Settings, HelpCircle, Info, LogOut, Home, Zap,
-    PanelLeftClose, PanelLeftOpen, LogIn,
+    PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -30,30 +34,21 @@ const SIDEBAR_TRANSITION = { type: 'tween', ease: [0.22, 1, 0.36, 1], duration: 
 // visivelmente espremidos contra a borda durante o recolhimento.
 const LABEL_TRANSITION = { duration: 0.14, ease: 'easeOut' };
 
-// Mesmas opções do dropdown do Header mobile. Deslogado sobra só o que é público:
-// as rotas protegidas cairiam no ProtectedRoute e voltariam pra Home, e o mobile
-// também esconde o menu inteiro nesse caso (lá só sobra logo + "Entrar").
-const PUBLIC_OPTIONS = [
-    { label: 'Início', icon: Home, path: '/' },
-    { label: 'Ajuda', icon: HelpCircle, path: '/help' },
-    { label: 'Sobre o FastSign', icon: Info, path: '/about' },
-];
-
-const AUTHENTICATED_OPTIONS = [
+// Mesmas opções do dropdown do Header mobile — que, como esta sidebar, só aparece
+// para quem está logado.
+const NAV_OPTIONS = [
     { label: 'Início', icon: Home, path: '/' },
     { label: 'Meus documentos', icon: FileText, path: '/documents' },
     { label: 'Configurações', icon: Settings, path: '/settings' },
     { label: 'Ajuda', icon: HelpCircle, path: '/help' },
-    { label: 'Sobre o FastSign', icon: Info, path: '/about' },
+    { label: 'Sobre o Sinaki', icon: Info, path: '/about' },
 ];
 
 export default function DesktopSidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
-    const { isAuthenticated, user, logout } = useAuth();
-
-    const options = isAuthenticated ? AUTHENTICATED_OPTIONS : PUBLIC_OPTIONS;
+    const { user, logout } = useAuth();
 
     // "/" só casa exato (senão ficaria ativo em toda rota); as demais casam por
     // prefixo, pra /documents seguir destacado em /documents/:id e /documents/to-sign/:token.
@@ -106,7 +101,7 @@ export default function DesktopSidebar() {
                             >
                                 <Zap size={14} className="text-white" fill="currentColor" />
                             </div>
-                            <span className="text-sm font-semibold text-white whitespace-nowrap">FastSign</span>
+                            <span className="text-sm font-semibold text-white whitespace-nowrap">Sinaki</span>
                         </motion.button>
                     )}
                 </AnimatePresence>
@@ -127,7 +122,7 @@ export default function DesktopSidebar() {
 
             {/* Navegação */}
             <nav className="flex-1 min-h-0 overflow-y-auto scrollbar-hidden px-3 py-3 flex flex-col gap-1">
-                {options.map((option) => {
+                {NAV_OPTIONS.map((option) => {
                     const Icon = option.icon;
                     const active = isActive(option.path);
                     return (
@@ -164,92 +159,63 @@ export default function DesktopSidebar() {
                 })}
             </nav>
 
-            {/* Rodapé: identidade do usuário + sair (ou entrar) — no mobile isso vive no
-                canto superior direito do Header; aqui a sidebar assume esse papel. */}
+            {/* Rodapé: identidade do usuário + sair — no mobile isso vive no canto
+                superior direito do Header; aqui a sidebar assume esse papel. */}
             <div className="shrink-0 px-3 py-3 flex flex-col gap-2" style={{ borderTop: `1px solid ${BORDER_SOFT}` }}>
-                {isAuthenticated ? (
-                    <>
-                        <div
-                            className={`rounded-xl flex items-center gap-2.5 py-2 ${collapsed ? 'justify-center px-0' : 'px-2'}`}
-                            style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
-                            title={collapsed ? user?.name : undefined}
-                        >
-                            <div
-                                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-semibold text-white"
-                                style={{ background: "linear-gradient(135deg, #5b6af0 0%, #7c5cf6 100%)" }}
-                            >
-                                {userInitial}
-                            </div>
-                            <AnimatePresence initial={false}>
-                                {!collapsed && (
-                                    <motion.div
-                                        key="user-info"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={LABEL_TRANSITION}
-                                        className="min-w-0 flex flex-col"
-                                    >
-                                        <span className="text-sm font-medium text-white truncate">{user?.name}</span>
-                                        {user?.email && (
-                                            <span className="text-xs text-gray-500 truncate">{user.email}</span>
-                                        )}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        <button
-                            onClick={handleLogout}
-                            title={collapsed ? 'Sair' : undefined}
-                            className={`h-10 rounded-xl flex items-center gap-3 text-sm font-medium transition-colors ${collapsed ? 'justify-center px-0' : 'px-3'}`}
-                            style={{ background: "transparent", color: "#f87171" }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(240,91,91,0.08)")}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                        >
-                            <LogOut size={16} className="shrink-0" />
-                            <AnimatePresence initial={false}>
-                                {!collapsed && (
-                                    <motion.span
-                                        key="logout-label"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={LABEL_TRANSITION}
-                                        className="whitespace-nowrap"
-                                    >
-                                        Sair
-                                    </motion.span>
-                                )}
-                            </AnimatePresence>
-                        </button>
-                    </>
-                ) : (
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => navigate('/login')}
-                        title={collapsed ? 'Entrar' : undefined}
-                        className="h-10 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold text-white shrink-0"
+                <div
+                    className={`rounded-xl flex items-center gap-2.5 py-2 ${collapsed ? 'justify-center px-0' : 'px-2'}`}
+                    style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER_SOFT}` }}
+                    title={collapsed ? user?.name : undefined}
+                >
+                    <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-semibold text-white"
                         style={{ background: "linear-gradient(135deg, #5b6af0 0%, #7c5cf6 100%)" }}
                     >
-                        <LogIn size={16} className="shrink-0" />
-                        <AnimatePresence initial={false}>
-                            {!collapsed && (
-                                <motion.span
-                                    key="login-label"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={LABEL_TRANSITION}
-                                    className="whitespace-nowrap"
-                                >
-                                    Entrar
-                                </motion.span>
-                            )}
-                        </AnimatePresence>
-                    </motion.button>
-                )}
+                        {userInitial}
+                    </div>
+                    <AnimatePresence initial={false}>
+                        {!collapsed && (
+                            <motion.div
+                                key="user-info"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={LABEL_TRANSITION}
+                                className="min-w-0 flex flex-col"
+                            >
+                                <span className="text-sm font-medium text-white truncate">{user?.name}</span>
+                                {user?.email && (
+                                    <span className="text-xs text-gray-500 truncate">{user.email}</span>
+                                )}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                <button
+                    onClick={handleLogout}
+                    title={collapsed ? 'Sair' : undefined}
+                    className={`h-10 rounded-xl flex items-center gap-3 text-sm font-medium transition-colors ${collapsed ? 'justify-center px-0' : 'px-3'}`}
+                    style={{ background: "transparent", color: "#f87171" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(240,91,91,0.08)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                    <LogOut size={16} className="shrink-0" />
+                    <AnimatePresence initial={false}>
+                        {!collapsed && (
+                            <motion.span
+                                key="logout-label"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={LABEL_TRANSITION}
+                                className="whitespace-nowrap"
+                            >
+                                Sair
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
+                </button>
             </div>
         </motion.aside>
     );

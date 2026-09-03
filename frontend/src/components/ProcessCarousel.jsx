@@ -1,4 +1,4 @@
-// Carrossel ilustrativo do processo do FastSign (Enviar → Signatários → Assinar) —
+// Carrossel ilustrativo do processo do Sinaki (Enviar → Signatários → Assinar) —
 // puramente decorativo: toca em loop automático, independente do passo REAL em que o
 // usuário está (isso continua sendo responsabilidade exclusiva do FlowSteps.jsx, que lê
 // a rota via `current`). Esse componente não lê nem influencia esse estado, é só uma

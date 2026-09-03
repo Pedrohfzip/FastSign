@@ -3,7 +3,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
-    container_name: fastsign-frontend-build
+    container_name: sinaki-frontend-build
     env_file:
       - ./frontend/.env.production
     volumes:
@@ -13,7 +13,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: fastsign-backend
+    container_name: sinaki-backend
     restart: unless-stopped
     ports:
       - "127.0.0.1:3001:3001"
@@ -21,7 +21,7 @@ services:
       - NODE_ENV=production
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_NAME=fastsign
+      - DB_NAME=sinaki
       - DB_USER=postgres
       - DB_PASSWORD=${POSTGRES_PASSWORD}
     env_file:
@@ -31,24 +31,24 @@ services:
     depends_on:
       - db
     networks:
-      - fastsign-network
+      - sinaki-network
 
   db:
     image: pgvector/pgvector:pg15
-    container_name: fastsign-db
+    container_name: sinaki-db
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=fastsign
+      - POSTGRES_DB=sinaki
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - fastsign-network
+      - sinaki-network
 
 volumes:
   postgres_data:
 
 networks:
-  fastsign-network:
+  sinaki-network:
     driver: bridge

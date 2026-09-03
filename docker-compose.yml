@@ -3,14 +3,14 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: fastsign-backend
+    container_name: sinaki-backend
     restart: unless-stopped
     ports:
       - "3001:3001"
     environment:
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_NAME=fastsign
+      - DB_NAME=sinaki
       - DB_USER=postgres
       - DB_PASSWORD=123
     env_file:
@@ -22,43 +22,43 @@ services:
     depends_on:
       - db
     networks:
-      - fastsign-network
+      - sinaki-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: fastsign-frontend
+    container_name: sinaki-frontend
     ports:
       - "5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     networks:
-      - fastsign-network
+      - sinaki-network
 
   db:
     image: pgvector/pgvector:pg15
-    container_name: fastsign-db
+    container_name: sinaki-db
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=fastsign
+      - POSTGRES_DB=sinaki
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=123
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - fastsign-network
+      - sinaki-network
 
   ollama:
     image: ollama/ollama:latest
-    container_name: fastsign-ollama
+    container_name: sinaki-ollama
     ports:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
     networks:
-      - fastsign-network
+      - sinaki-network
     deploy:
       resources:
         reservations:
@@ -72,5 +72,5 @@ volumes:
   ollama_data:
 
 networks:
-  fastsign-network:
+  sinaki-network:
     driver: bridge

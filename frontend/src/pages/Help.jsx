@@ -79,7 +79,7 @@ const CATEGORIES = [
         icon: ShieldCheck,
         items: [
             {
-                q: "A assinatura eletrônica do FastSign tem validade jurídica?",
+                q: "A assinatura eletrônica do Sinaki tem validade jurídica?",
                 a: 'Funciona como uma "assinatura eletrônica simples", reconhecida pela legislação brasileira (MP 2.200-2/2001 e Lei 14.063/2020) para acordos entre partes que consentem com esse meio — sem exigir certificado digital ICP-Brasil. Não é o mesmo nível de uma assinatura digital certificada, então para documentos que exigem certificação oficial, procure uma solução com certificado ICP-Brasil.',
             },
             {
@@ -150,7 +150,7 @@ export default function Help() {
                         </div>
                         <h1 className="text-2xl font-semibold text-white">Central de ajuda</h1>
                         <p className="text-sm text-gray-400 max-w-sm">
-                            Dúvidas comuns sobre enviar, assinar e proteger seus documentos no FastSign.
+                            Dúvidas comuns sobre enviar, assinar e proteger seus documentos no Sinaki.
                         </p>
                     </div>
 
@@ -249,7 +249,7 @@ export default function Help() {
                         <div className="flex flex-col gap-0.5">
                             <p className="text-sm font-medium text-white">Não encontrou o que precisava?</p>
                             <p className="text-xs text-gray-400 leading-relaxed">
-                                O FastSign é um projeto pessoal em evolução constante — sinta-se à vontade para
+                                O Sinaki é um projeto pessoal em evolução constante — sinta-se à vontade para
                                 explorar a plataforma e reportar qualquer coisa estranha que encontrar pelo caminho.
                             </p>
                         </div>

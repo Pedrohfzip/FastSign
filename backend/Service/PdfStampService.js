@@ -293,7 +293,7 @@ export async function appendSignatureCertificate(pdfBuffer, { documentTitle, doc
         pageNumber += 1;
         page = pdfDoc.addPage([pageWidth, pageHeight]);
 
-        // Faixa de topo com a cor de marca do FastSign.
+        // Faixa de topo com a cor de marca do Sinaki.
         page.drawRectangle({ x: 0, y: pageHeight - 86, width: pageWidth, height: 86, color: ACCENT_DARK_RGB });
         page.drawRectangle({ x: 0, y: pageHeight - 86, width: pageWidth, height: 6, color: ACCENT_RGB });
 
@@ -304,7 +304,7 @@ export async function appendSignatureCertificate(pdfBuffer, { documentTitle, doc
             font: fontBold,
             color: WHITE_RGB,
         });
-        page.drawText('Documento assinado eletronicamente através da plataforma FastSign', {
+        page.drawText('Documento assinado eletronicamente através da plataforma Sinaki', {
             x: CERT_MARGIN,
             y: pageHeight - 62,
             size: 9.5,

@@ -1,20 +1,20 @@
 // Casca do app: navegação + área de conteúdo.
 //
-// Mobile (padrão): coluna — Header horizontal no topo, conteúdo abaixo. Exatamente a
-// estrutura original.
-// Desktop (>= 1300x800, ver hooks/useViewportMode.js): linha — a MESMA instância do
-// Header (que nesse modo se renderiza como DesktopSidebar) vira a coluna da esquerda,
-// e o conteúdo ocupa o resto da largura.
+// Sem sidebar (mobile, ou desktop deslogado): coluna — Header horizontal no topo,
+// conteúdo abaixo. Exatamente a estrutura original.
+// Com sidebar (desktop logado, ver hooks/useSidebarLayout.js): linha — a MESMA
+// instância do Header (que nesse caso se renderiza como DesktopSidebar) vira a coluna
+// da esquerda, e o conteúdo ocupa o resto da largura.
 //
 // Nos dois modos a navegação fica FORA do <AppRoutes />, ou seja, fora do
 // AnimatePresence que faz o slide entre páginas — ela nunca remonta nem re-anima a
 // cada troca de rota.
 import AppRoutes from '../routes';
 import Header from './Header';
-import useViewportMode from '../hooks/useViewportMode';
+import useSidebarLayout from '../hooks/useSidebarLayout';
 
 export default function AppShell() {
-    const isDesktop = useViewportMode();
+    const { showSidebar } = useSidebarLayout();
 
     return (
         <div
@@ -22,7 +22,7 @@ export default function AppShell() {
                 height: '100vh',
                 overflow: 'hidden',
                 display: 'flex',
-                flexDirection: isDesktop ? 'row' : 'column',
+                flexDirection: showSidebar ? 'row' : 'column',
             }}
         >
             <Header />

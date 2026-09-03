@@ -1,4 +1,4 @@
-# FastSign — Contexto do Projeto
+# Sinaki — Contexto do Projeto
 
 Plataforma de assinatura eletrônica de documentos (PDF). Projeto pessoal/portfólio, foco em fluxo rápido e simples: upload de PDF → adicionar signatários → cada um assina via link único → documento final fica com a assinatura "carimbada".
 
@@ -6,12 +6,12 @@ Plataforma de assinatura eletrônica de documentos (PDF). Projeto pessoal/portf�
 
 - **Frontend**: React + Vite, React Router v7 (`react-router`, não `react-router-dom`), Framer Motion, Tailwind, lucide-react
 - **Backend**: Node.js ESM (`"type": "module"` no package.json), Express, Sequelize + PostgreSQL
-- **Infra**: Docker Compose (serviços: `fastsign-frontend`, `fastsign-backend`, `fastsign-db`, `fastsign-ollama`)
+- **Infra**: Docker Compose (serviços: `sinaki-frontend`, `sinaki-backend`, `sinaki-db`, `sinaki-ollama`)
 - **IA local**: Ollama rodando `qwen2.5:7b` (upgrade do `llama3.2:3b` original, resumos mais coerentes),
   com GPU NVIDIA passthrough configurado (RTX 3050, 8GB — o modelo em Q4_K_M ocupa ~4.7GB de VRAM). Como
   a GPU é compartilhada com o resto do Windows (jogos, browser, etc.), VRAM/uso de GPU concorrente pode
   deixar a geração drasticamente mais lenta (observado: de <30ms/token pra ~40s/token) — não é bug do
-  FastSign, é contenção de GPU real. `llama3.2:3b` continua baixado no volume `ollama_data` como opção
+  Sinaki, é contenção de GPU real. `llama3.2:3b` continua baixado no volume `ollama_data` como opção
   mais leve se precisar
 - **E-mail**: Resend (modo sandbox — só envia pro e-mail cadastrado na conta Resend até verificar domínio próprio)
 
@@ -40,11 +40,16 @@ frontend/src/
                          de assinatura"), DocumentDetail.jsx (tem botão "Baixar documento" que baixa a
                          `currentVersion` via `GET /documents/:id/file` como blob — já vem com o
                          certificado de assinaturas se houver alguma assinatura)
-  components/          → Header.jsx (logo "FastSign" no canto esquerdo só quando deslogado — logado
-                         esse espaço é do botão de menu; o componente retorna `null` de propósito em
-                         `/assinar/:accessToken`, já que o PublicSign.jsx não tem conta nem faz sentido
-                         mostrar menu/Entrar ali — esse `return null` vem DEPOIS de todos os hooks, pra
-                         não violar as Rules of Hooks ao navegar de/pra essa rota), ProtectedRoute.jsx,
+  components/          → AppShell.jsx (casca do app: navegação + área de conteúdo — é ela que troca a
+                         direção do layout raiz entre coluna e linha, ver "Layout desktop"; montada pelo
+                         main.jsx), Header.jsx (ÚNICO ponto de montagem da navegação: decide entre o header
+                         horizontal — logo "Sinaki" à esquerda quando deslogado, botão de menu quando
+                         logado, "Entrar"/nome do usuário à direita — e a DesktopSidebar; o componente
+                         retorna `null` de propósito em `/assinar/:accessToken`, já que o PublicSign.jsx
+                         não tem conta nem faz sentido mostrar menu/Entrar ali — esse `return null` vem
+                         DEPOIS de todos os hooks, pra não violar as Rules of Hooks ao navegar de/pra essa
+                         rota), DesktopSidebar.jsx (sidebar lateral persistente e recolhível do modo
+                         desktop LOGADO — ver "Layout desktop"), ProtectedRoute.jsx,
                          RootGate.jsx, PdfViewer.jsx (visualizador genérico de PDF via pdfjs-dist, com
                          paginação por botões — sem NENHUMA lógica de assinatura; aceita um `maxPage`
                          opcional que trunca a navegação nas primeiras N páginas — genérico, não é
@@ -55,7 +60,9 @@ frontend/src/
                          assinatura já anexada por uma rodada anterior — ver "Fluxo de assinatura"; usado em
                          SignScreen.jsx e PublicSign.jsx)
   hooks/               → useSignatureImage.js (gera a imagem de assinatura — PNG data URL — a partir
-                         de um nome, num <canvas> fora do DOM, usando a fonte "Dancing Script")
+                         de um nome, num <canvas> fora do DOM, usando a fonte "Dancing Script"),
+                         useViewportMode.js (`isDesktop`: viewport >= 1300x800), useSidebarLayout.js
+                         (`isDesktop` + logado → `showSidebar`) — ver "Layout desktop"
   context/             → AuthContext.jsx (useAuth hook)
   api/                 → index.js (instância axios), fileRoute.js, authRoute.js (também chamado loginRoute.js
                          em algumas versões — CONFIRME o nome real no projeto), signRoute.js
@@ -173,6 +180,41 @@ Signature (id, signatoryId, documentVersionId, signatureImage, signatureType, do
   proxy de "tela grande o bastante pra também ser alta" — títulos/paddings maiores só a partir do `2xl`,
   ficam mais compactos entre `lg` e `2xl` (cobre o caso comum de notebook 1366-1440 de largura mas só
   ~768-900 de altura). Se mexer nessas telas, testar nessas duas resoluções antes de mexer em espaçamento
+
+## Layout desktop
+
+Acima de um certo tamanho o app troca de layout inteiro, em vez de só esticar a coluna do mobile.
+
+- **O limiar é COMBINADO: largura >= 1300px E altura >= 800px.** Isso não dá pra fazer com breakpoint do
+  Tailwind (que só tem largura), então mora em `hooks/useViewportMode.js`: um único `matchMedia`
+  (`'(min-width: 1300px) and (min-height: 800px)'`) compartilhado via `useSyncExternalStore`, com um só
+  listener de `change` pro app inteiro (nada de listener de `resize`). **É a única fonte de verdade
+  desse limiar — não repetir essa media query em nenhum outro lugar**, nem em CSS. Notebooks 1366x768 /
+  1280x720 caem no layout mobile por causa da ALTURA, então todo o ajuste de `2xl` descrito acima
+  continua valendo pra eles sem interferência
+- **A sidebar só existe pra usuário LOGADO** (`hooks/useSidebarLayout.js` = `isDesktop && isAuthenticated`).
+  Deslogado, mesmo em tela grande, o app usa o header horizontal (logo à esquerda, "Entrar" à direita) —
+  sem conta não há navegação de app, só a landing. Enquanto a sessão está sendo verificada
+  (`AuthContext.loading`), o Header não renderiza NADA no desktop: renderizar o header horizontal e
+  trocar pela sidebar logo depois reposicionaria a tela inteira e piscaria um "Entrar" pra quem já está
+  logado. Essa regra tem que ser a mesma no `Header.jsx` e no `AppShell.jsx` (um renderiza a navegação,
+  o outro muda `flexDirection` de `column` pra `row`) — por isso ela mora no hook, num lugar só
+- A sidebar (`DesktopSidebar.jsx`) recolhe pra uma barra de ícones (248px → 76px) animando `width` com
+  Framer Motion — é a largura dela que devolve espaço pro conteúdo, já que os dois são irmãos flex; o
+  resto (rótulos) anima só `opacity`. O botão de recolher/expandir nunca some, então a navegação não
+  tem como ficar inacessível
+- A navegação (header OU sidebar) fica sempre FORA do `<AppRoutes />`, ou seja, fora do AnimatePresence
+  que faz o slide entre páginas — nunca remonta nem re-anima ao trocar de rota
+- Páginas com layout desktop próprio (todas condicionadas ao hook, sem NENHUMA mudança no mobile):
+  `MyDocuments.jsx` (grade de 2 colunas — 3 a partir de `2xl` — e abas + busca na mesma linha),
+  `DocumentDetail.jsx` (duas colunas: documento/download/resumo à esquerda, perguntas à IA + signatários
+  à direita — as seções são montadas uma vez em `sections` e recompostas por modo),
+  `UploadFile.jsx` (fila de arquivos à esquerda e preview do PDF à direita, cada um com scroll próprio;
+  o preview tem teto de largura senão o PdfViewer desenha a página gigante), `AddSignatories.jsx`
+  (formulário + coluna lateral com contatos salvos e "o que acontece depois") e `Home.jsx` (mais largura
+  e respiro). `Login.jsx`/`SignUp.jsx` seguem cards centralizados de propósito — formulário de auth não
+  ganha nada com largura. As telas de assinatura, Settings, Help, About e DocumentToSignDetail ainda
+  usam a coluna centralizada do mobile no desktop
 
 ## Bibliotecas com pegadinhas conhecidas
 
