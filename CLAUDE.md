@@ -253,9 +253,97 @@ Acima de um certo tamanho o app troca de layout inteiro, em vez de só esticar a
 - GPU: Ollama configurado com `deploy.resources.reservations.devices` (driver nvidia) — requer NVIDIA Container Toolkit instalado numa distro WSL completa (Ubuntu), não na distro interna `docker-desktop`
 - Ollama: usar `keep_alive: "10m"` nas chamadas para evitar reload do modelo a cada requisição
 
+## Deploy em produção
+
+Hospedado numa **VM própria** (não cloud paga). Uma tentativa inicial em Oracle Cloud Free Tier foi
+abandonada por indisponibilidade recorrente de capacidade do shape Ampere A1 e pela complexidade de rede
+de montar VCN/Internet Gateway/Security Lists manualmente. A VM roda em **VirtualBox** (Ubuntu Server
+22.04) no próprio PC — Windows Home não tem Hyper-V nativo, daí VirtualBox em vez da alternativa nativa —
+com adaptador de rede em modo **Bridged** (a VM vira mais um dispositivo na LAN, com IP próprio, em vez de
+ficar atrás do NAT do VirtualBox). IP fixo configurado via Netplan, editando diretamente o arquivo gerado
+pelo instalador (`/etc/netplan/00-installer-config.yaml`, mantendo o bloco `match`/`macaddress` original)
+— não depende de acesso ao roteador, o que importa porque o roteador desta rede está inacessível
+(senha perdida).
+
+**Nginx roda direto no host** (não containerizado), unificando frontend e backend na MESMA origem: serve
+os estáticos de `frontend/dist` em `/` e faz proxy de `/api/*` para o backend em `127.0.0.1:3001` (nunca
+exposto diretamente à rede). Essa unificação de origem é o que permite o cookie de sessão usar
+`SameSite=Strict` em vez da complexidade de `SameSite=None`/CORS cross-site que domínios separados para
+front e back exigiriam.
+
+`docker-compose.prod.yml` é um arquivo **separado** do `docker-compose.yml` de desenvolvimento —
+**sempre usar `-f docker-compose.prod.yml` explicitamente na VM**, nunca deixar cair no padrão, que inclui
+o serviço `ollama` com reserva de GPU e falha de cara numa VM sem GPU passthrough. Tem 3 serviços: `db`
+(Postgres), `backend` (porta só em `127.0.0.1`, nunca pública), e `frontend` — este último NÃO é um
+processo contínuo, é um *job* de build (`frontend/Dockerfile.prod` roda `npm ci && npm run build`; o
+resultado sai via bind mount `./frontend/dist:/app/dist`, caindo direto na pasta que o Nginx do host já
+serve, sem precisar copiar nada manualmente). `ENABLE_AI_SUMMARY=false` no `.env.production` da VM — sem
+GPU passthrough ali, o resumo por IA fica desativado em produção; a detecção de posição de assinatura
+continua normal (é heurística por regex, não depende de Ollama).
+
+Pegadinhas de infraestrutura já encontradas (conferir de novo primeiro se algo "voltar a quebrar sozinho"
+depois de mexer na VM):
+- **Confusão `root` vs `pedro`** foi a causa raiz de quase todo bug de permissão na VM — Git recusando por
+  "dubious ownership" (`git config --global --add safe.directory`), Nginx devolvendo 500 genérico por
+  falta de permissão de travessia (`x`) no `$HOME` do usuário para o `www-data` alcançar `frontend/dist`
+  (`chmod o+x /home/pedro` + `chmod -R o+rX .../dist`), e o `cloudflared` (item abaixo). Sempre conferir o
+  prompt (`pedro@fastsign` vs `root@fastsign`) antes de rodar comando novo nessa VM
+- **`.mjs` do worker do pdfjs chega com `Content-Type: application/octet-stream`** do Nginx por padrão (a
+  tabela de mime types não mapeia `.mjs`), e o navegador recusa executar por checagem estrita de MIME de
+  módulos ES. Corrigido com um `location ~ \.mjs$ { types { application/javascript mjs; } ... }` dedicado
+  no site do Nginx, em vez de editar o `mime.types` global (formato pode variar entre instalações)
+- **`cloudflared service install` (systemd) NÃO lê `~/.cloudflared/config.yml`** — o serviço espera a
+  config em `/etc/cloudflared/config.yml`, caminho separado do que `cloudflared tunnel create`/`login`
+  geram na home do usuário. O `config.yml` e o `<TUNNEL_ID>.json` de credenciais precisam existir
+  IDÊNTICOS nos dois lugares (`~/.cloudflared/` e `/etc/cloudflared/`), senão o serviço entra em loop de
+  restart com erro de "credentials file doesn't exist"
+
+## Domínio e Cloudflare Tunnel
+
+Domínio real: `sinakí.com.br` (registrado no Registro.br), cuja forma **Punycode** é
+`xn--sinak-3sa.com.br` — é essa forma ASCII que precisa aparecer em `server_name` do Nginx, em
+`ALLOWED_ORIGINS` (ver seção seguinte), e em qualquer lugar que compare a `Origin` de uma requisição: o
+navegador manda a forma Punycode no header `Origin`, nunca a acentuada.
+
+Exposição pública via **Cloudflare Tunnel** (`cloudflared`), não port forwarding — a VM se conecta para
+FORA até a borda da Cloudflare (conexão outbound), então não é preciso abrir porta nenhuma no roteador nem
+lidar com CGNAT (IP "público" do provedor que na prática não é roteável, comum em internet residencial/
+móvel). Hoje configurado como **Named Tunnel** (URL fixa no domínio próprio via `cloudflared tunnel
+route dns`), depois de uma fase de teste com **Quick Tunnel** (`cloudflared tunnel --url ...`, URL
+aleatória `*.trycloudflare.com` que muda a cada execução) — o CORS ainda aceita esse padrão via regex, útil
+para reativar testes rápidos sem depender do domínio.
+
+Ao adicionar o domínio pela primeira vez na Cloudflare ("Add a domain"), **digitar (ou até colar, dependendo
+do navegador/SO) o "í" acentuado pode falhar silenciosamente**, sem nenhum aviso — isso já causou a criação
+de uma zona para `sinak.com.br` (sem acento, um domínio completamente diferente do registrado, que
+Cloudflare aceitou de boa por ser "disponível"). Sempre conferir o nome exibido no TOPO da tela da
+Cloudflare depois de adicionar, letra por letra, antes de prosseguir para configurar nameservers.
+
+## Configuração de produção (segredos e CORS)
+
+`backend/.env.production` e o `.env` da raiz do projeto (este último lido automaticamente pelo Docker
+Compose, usado só para interpolar `${POSTGRES_PASSWORD}` dentro de `docker-compose.prod.yml` — evita a
+senha do banco em texto literal committada no compose) **não estão no Git** (`.gitignore`); existem só
+localmente e na VM, mantidos manualmente e de forma independente nos dois lugares.
+
+CORS em produção aceita múltiplas origens simultaneamente via `ALLOWED_ORIGINS` (variável nova, lista
+separada por vírgula no `.env.production`, ex: `https://xn--sinak-3sa.com.br,https://www.xn--sinak-3sa.com.br`),
+somada às regras que já existiam antes (regex de LAN para desenvolvimento, regex de `*.trycloudflare.com`
+para testes com Quick Tunnel) — a lista é parseada uma vez fora da função de callback do `cors`, não a cada
+requisição. Existe um error-handling middleware dedicado (4 argumentos, registrado por último em
+`index.js`, depois de todas as rotas) que devolve 403 com JSON claro quando a origem é rejeitada pelo CORS,
+em vez do 500 mudo que o Express dá por padrão quando o `callback(new Error(...))` do `cors` não tem
+nenhum handler capturando — e loga qualquer outro erro não tratado via
+`console.error('[GlobalErrorHandler]', err)` antes de responder 500 genérico ao cliente (nunca vaza stack
+trace na resposta).
+
 ## Pendências conhecidas (não implementadas ainda)
 
-- Verificação de domínio próprio no Resend (hoje só envia pro email da conta sandbox)
+- Verificação de domínio próprio no Resend (hoje só envia pro email da conta sandbox) — o domínio já existe
+  e está na Cloudflare (ver "Domínio e Cloudflare Tunnel"), então isso já é possível, só falta fazer.
+  Recomendado usar um subdomínio dedicado (ex: `mail.xn--sinak-3sa.com.br`), não o domínio raiz — e, como o
+  DNS já é gerenciado pela Cloudflare, o Resend deve conseguir adicionar os registros TXT/DKIM
+  automaticamente via integração direta, sem precisar copiar valores manualmente
 - Fine-tuning de modelo Ollama, caso o upgrade pra `qwen2.5:7b` não seja suficiente no futuro (fine-tuning
   em si não foi feito — exigiria montar dataset de documentos + resumos bons e infra de treino à parte)
 - `Document.requireSignatoryDocument`, uma vez ligado (true), não tem como voltar a false pela UI —

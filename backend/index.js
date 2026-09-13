@@ -19,6 +19,26 @@ const LAN_ORIGIN_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\
 // Enquanto estivermos testando com Quick Tunnel (URL muda a cada restart do cloudflared)
 const TRYCLOUDFLARE_PATTERN = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/;
 
+// Domínio(s) de produção "de verdade" (pode ter mais de um — ex: com e sem "www").
+// Lista separada por vírgula em ALLOWED_ORIGINS, parseada uma única vez aqui fora do
+// callback de origin (não recalcular a cada requisição). FRONTEND_URL continua sendo
+// aceito também por compatibilidade com quem só setava essa variável antes, mas deixou
+// de ser a ÚNICA fonte de verdade pra CORS — use ALLOWED_ORIGINS pra múltiplos domínios.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+// Classe própria (em vez de comparar err.message) pra distinguir de forma confiável,
+// no error handler global lá embaixo, um bloqueio de CORS de qualquer outro erro.
+class CorsOriginError extends Error {
+    constructor(origin) {
+        super('Não permitido pelo CORS.');
+        this.name = 'CorsOriginError';
+        this.origin = origin;
+    }
+}
+
 app.use(cors({
     origin(origin, callback) {
         if (!origin) return callback(null, true);
@@ -31,12 +51,16 @@ app.use(cors({
             return callback(null, true);
         }
 
+        if (ALLOWED_ORIGINS.includes(origin)) {
+            return callback(null, true);
+        }
+
         if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) {
             return callback(null, true);
         }
 
         console.warn('[CORS] Origem bloqueada:', origin);
-        callback(new Error('Não permitido pelo CORS.'));
+        callback(new CorsOriginError(origin));
     },
     credentials: true,
 }));
@@ -59,6 +83,22 @@ app.use((req, res, next) => {
 
 
 app.use('/api', router);
+
+// Error handler global — DEPOIS de todas as rotas/middlewares, assinatura de 4
+// argumentos é o que faz o Express reconhecer isso como error handler. Sem isso, um
+// bloqueio de CORS (ou qualquer outro erro passado pra next()) caía no handler padrão
+// do Express, que devolve um 500 genérico em HTML e mascara a causa real.
+app.use((err, req, res, next) => {
+    if (err instanceof CorsOriginError) {
+        return res.status(403).json({ error: 'Origem não permitida.' });
+    }
+
+    // Nunca vazar stack trace/detalhes internos pro cliente — mas sempre logar
+    // completo aqui, pra aparecer em `docker compose logs backend` em vez de sumir
+    // atrás de um "500" sem contexto.
+    console.error('[GlobalErrorHandler]', err);
+    res.status(500).json({ error: 'Erro interno do servidor.' });
+});
 
 const start = async () => {
     try {
